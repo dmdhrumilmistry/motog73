@@ -28,12 +28,17 @@ jobs:
           find . -name '*.xml' -not -path './src/*' -print0 | xargs -0 xmllint --noout
 
       - name: Python syntax
-        run: python3 -m py_compile scripts/moto-flashfile.py
+        run: python3 -m py_compile scripts/moto-flashfile.py tests/check-pmos-packages.py
 
       - name: No secrets or blobs committed
         run: |
           bad=$(git ls-files | grep -E '\.(pem|pk8|key|jks|keystore|img|ko|bin|zip)$|(^|/)\.env' || true)
           if [ -n "$bad" ]; then echo "Forbidden files:"; echo "$bad"; exit 1; fi
+
+      - name: Clone pmaports (schema reference)
+        run: |
+          git clone --depth 1 https://gitlab.postmarketos.org/postmarketOS/pmaports.git "$RUNNER_TEMP/pmaports"
+          echo "PMAPORTS=$RUNNER_TEMP/pmaports" >> "$GITHUB_ENV"
 
       - name: Offline script tests
         run: tests/run-tests.sh

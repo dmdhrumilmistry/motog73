@@ -109,4 +109,21 @@ if python3 "$ROOT/scripts/moto-flashfile.py" fw >/dev/null 2>&1; then
 fi
 ok "moto-flashfile parses steps, honours --keep-data and checks MD5"
 
+# 6. postmarketOS package validation (checks against $PMAPORTS schema if set).
+python3 "$ROOT/tests/check-pmos-packages.py" >pmos-check.txt 2>&1 \
+    || { cat pmos-check.txt >&2; fail "postmarketOS package checks failed"; }
+ok "postmarketOS packages pass offline validation"
+
+# 7. pmaports-import.sh dry run copies both packages and prints pmbootstrap commands.
+mkdir -p fake-pmaports/device
+: > fake-pmaports/deviceinfo_schema.toml
+"$ROOT/linux/postmarketos/pmaports-import.sh" --dry-run --pmaports fake-pmaports >import.txt 2>&1 \
+    || { cat import.txt >&2; fail "pmaports-import.sh --dry-run failed"; }
+[[ -f fake-pmaports/device/downstream/device-motorola-devonf/APKBUILD ]] \
+    || fail "device package not copied"
+[[ -f fake-pmaports/device/downstream/linux-motorola-devonf/APKBUILD ]] \
+    || fail "kernel package not copied"
+grep -q "pmbootstrap checksum" import.txt || fail "pmbootstrap checksum not printed"
+ok "pmaports-import.sh --dry-run copies packages and prints pmbootstrap commands"
+
 echo "All $pass tests passed."
