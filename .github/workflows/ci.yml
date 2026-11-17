@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q shellcheck libxml2-utils lz4 cpio
+
+      - name: shellcheck
+        run: |
+          find . -name '*.sh' -not -path './src/*' -print0 | xargs -0 shellcheck
+
+      - name: XML well-formedness
+        run: |
+          find . -name '*.xml' -not -path './src/*' -print0 | xargs -0 xmllint --noout
+
+      - name: Python syntax
+        run: python3 -m py_compile scripts/moto-flashfile.py
+
+      - name: No secrets or blobs committed
+        run: |
+          bad=$(git ls-files | grep -E '\.(pem|pk8|key|jks|keystore|img|ko|bin|zip)$|(^|/)\.env' || true)
+          if [ -n "$bad" ]; then echo "Forbidden files:"; echo "$bad"; exit 1; fi
+
+      - name: Offline script tests
+        run: tests/run-tests.sh

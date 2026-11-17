@@ -1,0 +1,56 @@
+name: Kernel build
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Motorola kernel tag
+        default: MMI-U1TNS34.82-12-7-26
+      flavor:
+        description: "Config fragment: none, g73open or postmarketos"
+        default: g73open
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q bc bison flex libssl-dev libelf-dev cpio lz4 python3
+
+      - name: Fetch AOSP clang r416183b
+        run: kernel/fetch-clang.sh src/clang-r416183b
+
+      - name: Build kernel
+        env:
+          TAG: ${{ inputs.tag }}
+          FLAVOR: ${{ inputs.flavor }}
+        run: |
+          case "$FLAVOR" in
+            g73open)      extra=-g ;;
+            postmarketos) extra=-p ;;
+            *)            extra= ;;
+          esac
+          kernel/build-kernel.sh -t "$TAG" -c src/clang-r416183b $extra
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel-devonf-${{ inputs.tag }}-${{ inputs.flavor }}
+          path: |
+            out/kernel/dist/Image.gz
+            out/kernel/dist/mt6855.dtb
+            out/kernel/dist/config
+            out/kernel/dist/kernel.release
