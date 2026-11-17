@@ -31,11 +31,16 @@ Options: `-k` writes the config only, `-f file` merges your own fragment,
 `-v userdebug` adds Motorola's debug fragments.
 
 **Compiler:** the tree is written for AOSP clang 12. Newer clang releases
-emit extra warnings in MediaTek's drivers, and GKI's `CONFIG_WERROR=y` turns
-them into errors (for example `-Wbitwise-instead-of-logical` with clang 18).
-Use `fetch-clang.sh`, or pass `-W` to merge
-[`configs/no-werror.config`](../kernel/configs/no-werror.config) when you
-build with a newer host clang. It only changes compiler flags, not the KMI.
+report extra warnings in MediaTek's drivers, and both GKI's `CONFIG_WERROR=y`
+and several MediaTek driver Makefiles turn them into errors. A clang 18 build
+of this tag (`make -k`) fails on six warnings: `implicit-int`,
+`unused-but-set-variable`, `strict-prototypes`, `deprecated-non-prototype`,
+`single-bit-bitfield-constant-conversion` and `bitwise-instead-of-logical`.
+
+Use `fetch-clang.sh` (recommended), or pass `-W` to build with a newer host
+clang. `-W` merges [`configs/no-werror.config`](../kernel/configs/no-werror.config)
+and adds `-Wno-error=<warning>` for those six. It only changes compiler
+flags, not the KMI.
 
 **Memory:** the stock config uses full LTO. Linking `vmlinux` needs about
 16 GB of RAM. On smaller machines add swap, or run the final link with `-j1`.

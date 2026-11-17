@@ -30,6 +30,13 @@ VARIANT="${VARIANT:-user}"
 JOBS="${JOBS:-$(nproc)}"
 CLANG_DIR="${CLANG_DIR:-}"
 FRAGMENTS=()
+NEW_CLANG=0
+# Warnings that clang 14-18 report in this tree and that MediaTek driver
+# Makefiles (or CONFIG_WERROR) turn into errors. Found with clang 18 and
+# `make -k`; see docs/kernel.md.
+NEW_CLANG_WARNINGS=(implicit-int unused-but-set-variable strict-prototypes
+                    deprecated-non-prototype single-bit-bitfield-constant-conversion
+                    bitwise-instead-of-logical)
 TARGETS=(Image.gz modules mediatek/mt6855.dtb)
 
 usage() {
@@ -44,7 +51,8 @@ Options:
   -f FILE       extra config fragment to merge (repeatable)
   -p            merge kernel/configs/postmarketos.config (Linux flavor)
   -g            merge kernel/configs/g73open.config (custom ROM flavor)
-  -W            merge kernel/configs/no-werror.config (build with newer clang)
+  -W            build with a newer clang: merge configs/no-werror.config and
+                pass -Wno-error=<w> for the warnings MediaTek drivers trip on
   -c DIR        clang toolchain directory (e.g. AOSP clang-r416183b);
                 use kernel/fetch-clang.sh to download it
   -k            only generate the .config (no compile)
@@ -63,7 +71,7 @@ while getopts "t:s:o:v:f:pgWc:kj:h" opt; do
         f) FRAGMENTS+=("$(realpath "$OPTARG")") ;;
         p) FRAGMENTS+=("$ROOT/kernel/configs/postmarketos.config") ;;
         g) FRAGMENTS+=("$ROOT/kernel/configs/g73open.config") ;;
-        W) FRAGMENTS+=("$ROOT/kernel/configs/no-werror.config") ;;
+        W) FRAGMENTS+=("$ROOT/kernel/configs/no-werror.config"); NEW_CLANG=1 ;;
         c) CLANG_DIR="$OPTARG" ;;
         k) CONFIG_ONLY=1 ;;
         j) JOBS="$OPTARG" ;;
@@ -98,6 +106,10 @@ MAKE=(make -C "$SRC" O="$OUT" ARCH=arm64 LLVM=1 LLVM_IAS=1
       CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_COMPAT=arm-linux-gnueabi-
       KBUILD_BUILD_USER=builder KBUILD_BUILD_HOST=motog73
       -j"$JOBS")
+
+if [[ "$NEW_CLANG" == 1 ]]; then
+    MAKE+=(KCFLAGS="$(printf -- '-Wno-error=%s ' "${NEW_CLANG_WARNINGS[@]}")")
+fi
 
 EXT="$SRC/arch/arm64/configs/ext_config"
 # Same order MediaTek's scripts/gen_build_config.py uses:
