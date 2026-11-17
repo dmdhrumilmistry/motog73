@@ -6,14 +6,17 @@
 #
 # Produces in $OUT/dist:
 #   Image.gz            kernel image (boot.img payload)
+#   mt6855.dtb          SoC device tree (the vendor_boot DTB)
 #   modules/            in-tree kernel modules (stripped)
 #   config              final kernel .config
 #   kernel.release      kernel release string
 #
-# DTB/DTBO are NOT built here: MediaTek generates the board DTS includes
-# (devonf_evb/cust.dtsi) with a proprietary DCT tool during the Android build.
-# Re-use the dtb/dtbo from your own stock firmware instead
-# (see scripts/extract-stock-images.sh).
+# The board overlay (dtbo) is NOT built here: MediaTek generates its DTS
+# includes (devonf_evb/cust.dtsi) with a proprietary DCT tool during the
+# Android build. Keep using the stock dtbo.img.
+#
+# The default GKI config uses full LTO: linking vmlinux needs ~16 GB of RAM
+# (add swap on smaller machines).
 #
 set -euo pipefail
 
@@ -27,7 +30,7 @@ VARIANT="${VARIANT:-user}"
 JOBS="${JOBS:-$(nproc)}"
 CLANG_DIR="${CLANG_DIR:-}"
 FRAGMENTS=()
-TARGETS=(Image.gz modules)
+TARGETS=(Image.gz modules mediatek/mt6855.dtb)
 
 usage() {
     cat <<EOF
@@ -41,6 +44,7 @@ Options:
   -f FILE       extra config fragment to merge (repeatable)
   -p            merge kernel/configs/postmarketos.config (Linux flavor)
   -g            merge kernel/configs/g73open.config (custom ROM flavor)
+  -W            merge kernel/configs/no-werror.config (build with newer clang)
   -c DIR        clang toolchain directory (e.g. AOSP clang-r416183b);
                 use kernel/fetch-clang.sh to download it
   -k            only generate the .config (no compile)
@@ -50,7 +54,7 @@ EOF
 }
 
 CONFIG_ONLY=0
-while getopts "t:s:o:v:f:pgc:kj:h" opt; do
+while getopts "t:s:o:v:f:pgWc:kj:h" opt; do
     case "$opt" in
         t) TAG="$OPTARG" ;;
         s) SRC="$OPTARG" ;;
@@ -59,6 +63,7 @@ while getopts "t:s:o:v:f:pgc:kj:h" opt; do
         f) FRAGMENTS+=("$(realpath "$OPTARG")") ;;
         p) FRAGMENTS+=("$ROOT/kernel/configs/postmarketos.config") ;;
         g) FRAGMENTS+=("$ROOT/kernel/configs/g73open.config") ;;
+        W) FRAGMENTS+=("$ROOT/kernel/configs/no-werror.config") ;;
         c) CLANG_DIR="$OPTARG" ;;
         k) CONFIG_ONLY=1 ;;
         j) JOBS="$OPTARG" ;;
@@ -140,6 +145,7 @@ DIST="$OUT/dist"
 rm -rf "$DIST"
 mkdir -p "$DIST/modules"
 cp "$OUT/arch/arm64/boot/Image.gz" "$DIST/"
+cp "$OUT/arch/arm64/boot/dts/mediatek/mt6855.dtb" "$DIST/"
 cp "$OUT/.config" "$DIST/config"
 cp "$OUT/include/config/kernel.release" "$DIST/kernel.release"
 "${MAKE[@]}" INSTALL_MOD_PATH="$DIST/modules" INSTALL_MOD_STRIP=1 modules_install

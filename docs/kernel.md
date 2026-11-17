@@ -31,9 +31,14 @@ Options: `-k` writes the config only, `-f file` merges your own fragment,
 `-v userdebug` adds Motorola's debug fragments.
 
 **Compiler:** the tree is written for AOSP clang 12. Newer clang releases
-fail on extra warnings in MediaTek's drivers, which build with `-Werror`.
-Use `fetch-clang.sh`, or pass `-W` to downgrade those warnings when you
-build with a newer host clang.
+emit extra warnings in MediaTek's drivers, and GKI's `CONFIG_WERROR=y` turns
+them into errors (for example `-Wbitwise-instead-of-logical` with clang 18).
+Use `fetch-clang.sh`, or pass `-W` to merge
+[`configs/no-werror.config`](../kernel/configs/no-werror.config) when you
+build with a newer host clang. It only changes compiler flags, not the KMI.
+
+**Memory:** the stock config uses full LTO. Linking `vmlinux` needs about
+16 GB of RAM. On smaller machines add swap, or run the final link with `-j1`.
 
 ## Full source tree (with out-of-tree modules)
 
