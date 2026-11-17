@@ -84,5 +84,5 @@ package() {
 # The tarball checksum is filled in by `pmbootstrap checksum linux-motorola-devonf`
 sha512sums="
 RUN_PMBOOTSTRAP_CHECKSUM  linux-motorola-devonf-MMI-U1TNS34.82-12-7-26.tar.gz
-4ce8556c76c6f81250539c463757b3f0aab493a565a379ee888e44b53923924bfcc4dab9edb8898ea769b9b902c22eda6787d8294732576256b41e3004fae90f  config-motorola-devonf.aarch64
+7d096dac69b5b351801672bf575d9d9557b4b993686314dd261b58bb1ca66246925533ce0ef37d070b98ec1020c43d57d998f628f6197a3ce2946d3eb9d01047  config-motorola-devonf.aarch64
 "
