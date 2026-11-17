@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Motorola open source kernel release for the moto g73 5G (devonf)
+  matching stock build U1TNS34.82-12-7-26 (Android 14, GKI android12-5.10).
+
+  Usage:
+    repo init -u https://github.com/dmdhrumilmistry/motog73 -b main -m kernel/manifests/devonf-U1TNS34.82-12-7-26.xml
+    repo sync -c -j"$(nproc)"
+
+  or copy this file to .repo/local_manifests/ of an existing checkout.
+  All projects are pinned to the same Motorola tag.
+-->
+<manifest>
+  <remote name="moto" fetch="https://github.com/MotorolaMobilityLLC/" />
+  <default remote="moto" revision="refs/tags/MMI-U1TNS34.82-12-7-26" sync-c="true" sync-tags="false" />
+
+  <!-- GKI-based MediaTek kernel (in-tree MTK drivers, devonf configs and DTS) -->
+  <project path="kernel-5.10" name="kernel-mtk" clone-depth="1" />
+
+  <!-- Motorola out-of-tree modules (touch, sensors, mmi_info, charging, ...) -->
+  <project path="motorola/kernel/modules" name="motorola-kernel-modules" clone-depth="1" />
+
+  <!-- MediaTek out-of-tree modules -->
+  <project path="vendor/mediatek/kernel_modules/connectivity/common" name="vendor-mediatek-kernel_modules-connectivity-common" clone-depth="1" />
+  <project path="vendor/mediatek/kernel_modules/connectivity/conninfra" name="vendor-mediatek-kernel_modules-connectivity-conninfra" clone-depth="1" />
+  <project path="vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m" name="vendor-mediatek-kernel_modules-connectivity-wlan-core-gen4m" clone-depth="1" />
+  <project path="vendor/mediatek/kernel_modules/connectivity/wlan/adaptor" name="vendor-mediatek-kernel_modules-connectivity-wlan-adaptor" clone-depth="1" />
+  <project path="vendor/mediatek/kernel_modules/connectivity/bt/mt66xx" name="vendor-mediatek-kernel_modules-connectivity-bt-mt66xx" clone-depth="1" />
+  <project path="vendor/mediatek/kernel_modules/connectivity/gps" name="vendor-mediatek-kernel_modules-connectivity-gps" clone-depth="1" />
+  <project path="vendor/mediatek/kernel_modules/connectivity/fmradio" name="vendor-mediatek-kernel_modules-connectivity-fmradio" clone-depth="1" />
+  <project path="vendor/mediatek/kernel_modules/gpu" name="vendor-mediatek-kernel_modules-gpu" clone-depth="1" />
+  <project path="vendor/mediatek/kernel_modules/met_drv_v3" name="vendor-mediatek-kernel_modules-met_drv_v3" clone-depth="1" />
+</manifest>
