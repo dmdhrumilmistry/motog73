@@ -1,0 +1,32 @@
+# Reference: <https://postmarketos.org/devicepkg>
+pkgname=device-motorola-devonf
+pkgdesc="Motorola moto g73 5G"
+pkgver=1
+pkgrel=0
+url="https://github.com/dmdhrumilmistry/motog73"
+license="Apache-2.0"
+arch="aarch64"
+options="!check !archcheck"
+depends="
+	linux-motorola-devonf
+	mkbootimg
+	postmarketos-base
+"
+makedepends="devicepkg-dev"
+source="
+	deviceinfo
+	modules-initfs
+"
+
+build() {
+	devicepkg_build $startdir $pkgname
+}
+
+package() {
+	devicepkg_package $startdir $pkgname
+}
+
+sha512sums="
+6e9ca9affe24ce74df633e8618e93d2a8374c2fe70037b3b81d79f620e009a9921919419cbabf21e89eebcf83e5c13c4c363cb6be297fa54132f96c60c6c17e2  deviceinfo
+bb62aa7e70b80f19151114f6676467fe6f4d41e897683356c5a823b1e2adc04faab1293e97653f08978eb5c86ccb757e4d20f8685f60b81f2bb640a2d80d98c9  modules-initfs
+"
