@@ -1,7 +1,11 @@
 # postmarketOS packages for the moto g73 5G
 
-- `device-motorola-devonf/`: deviceinfo + initramfs modules
+All untested on hardware.
+
+- `device-motorola-devonf/`: `deviceinfo`, `kernel-cmdline.conf`, initramfs modules
 - `linux-motorola-devonf/`: kernel package (Motorola source, postmarketOS config)
+- `pmaports-import.sh`: copies both packages into a pmaports checkout
+  (`device/downstream`), updates checksums, optionally builds/installs
 
 `config-motorola-devonf.aarch64` is generated with:
 

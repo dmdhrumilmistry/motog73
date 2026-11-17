@@ -1,9 +1,11 @@
+# Maintainer is filled in by whoever submits this package upstream.
+maintainer=""
 # Reference: <https://postmarketos.org/devicepkg>
 pkgname=device-motorola-devonf
 pkgdesc="Motorola moto g73 5G"
 pkgver=1
 pkgrel=0
-url="https://github.com/dmdhrumilmistry/motog73"
+url="https://postmarketos.org"
 license="Apache-2.0"
 arch="aarch64"
 options="!check !archcheck"
@@ -15,6 +17,7 @@ depends="
 makedepends="devicepkg-dev"
 source="
 	deviceinfo
+	kernel-cmdline.conf
 	modules-initfs
 "
 
@@ -27,6 +30,7 @@ package() {
 }
 
 sha512sums="
-6e9ca9affe24ce74df633e8618e93d2a8374c2fe70037b3b81d79f620e009a9921919419cbabf21e89eebcf83e5c13c4c363cb6be297fa54132f96c60c6c17e2  deviceinfo
+cb07ac9f518c277e8ec8e9459bef0e040a4e0766badc6d43005615a806ce3053cc204b717c7d2944973159a4e13e88772fcfc4df1f61523b42d563e04cb5493f  deviceinfo
+7a14f2d4ffcd495b3bc0a5b8efb41611939840b2f802d06cfc0779803ea8fd84e2214a1d08a28ab5ee1b35b9726537c4a05c6fa3a64dc2e7036fe46b9ed0cd1c  kernel-cmdline.conf
 bb62aa7e70b80f19151114f6676467fe6f4d41e897683356c5a823b1e2adc04faab1293e97653f08978eb5c86ccb757e4d20f8685f60b81f2bb640a2d80d98c9  modules-initfs
 "

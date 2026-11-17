@@ -3,6 +3,8 @@
 # https://github.com/dmdhrumilmistry/motog73 from
 #   gki_defconfig + mgk_64_k510_defconfig + Motorola devonf overlays
 #   + kernel/configs/postmarketos.config
+# Maintainer: filled in by the upstream submitter
+maintainer=""
 pkgname=linux-motorola-devonf
 pkgver=5.10.240
 pkgrel=0
@@ -33,63 +35,50 @@ makedepends="
 
 # Source: Motorola release matching stock build U1TNS34.82-12-7-26
 _tag="MMI-U1TNS34.82-12-7-26"
-_config="config-$_flavor.$CARCH"
+_config="config-$_flavor.$arch"
 source="
 	$pkgname-$_tag.tar.gz::https://github.com/MotorolaMobilityLLC/kernel-mtk/archive/refs/tags/$_tag.tar.gz
 	$_config
 "
 builddir="$srcdir/kernel-mtk-$_tag"
 
-# The source targets AOSP clang 12. Newer clang releases add warnings that
-# MediaTek's drivers turn into errors with -Werror; downgrade them.
-_kcflags="
-	-Wno-error=bitwise-instead-of-logical
-	-Wno-error=unused-but-set-variable
-	-Wno-error=unused-but-set-parameter
-	-Wno-error=deprecated-non-prototype
-	-Wno-error=strict-prototypes
-	-Wno-error=single-bit-bitfield-constant-conversion
-	-Wno-error=array-parameter
-	-Wno-error=gnu-variable-sized-type-not-at-end
-	-Wno-error=unused-function
-	-Wno-error=unused-variable
-	-Wno-error=format
-"
+export LLVM=1
+export LLVM_IAS=1
+export CC="clang"
+export HOSTCC="clang"
 
-_make() {
-	make ARCH="$_carch" LLVM=1 LLVM_IAS=1 \
-		KCFLAGS="$(echo $_kcflags)" \
-		KBUILD_BUILD_VERSION="$((pkgrel + 1))-$_flavor" \
-		"$@"
-}
+# Install Image.gz rather than the uncompressed Image
+export KERNEL_IMAGE_NAME="Image.gz"
+
+_outdir="out"
 
 prepare() {
 	default_prepare
-	cp "$srcdir/$_config" .config
-	_make olddefconfig
+	# 5.10 already ships a working include/linux/compiler-gcc.h
+	REPLACE_GCCH=0 . downstreamkernel_prepare
 }
 
 build() {
 	unset LDFLAGS
-	_make Image.gz modules mediatek/mt6855.dtb
+	make O="$_outdir" ARCH="$_carch" LLVM=1 LLVM_IAS=1 \
+		KBUILD_BUILD_VERSION="$((pkgrel + 1))-postmarketOS" \
+		Image.gz modules mediatek/mt6855.dtb
 }
 
 package() {
-	install -Dm644 "$builddir/arch/$_carch/boot/Image.gz" \
-		"$pkgdir/boot/vmlinuz"
+	downstreamkernel_package "$builddir" "$pkgdir" "$_carch" \
+		"$_flavor" "$_outdir"
 
-	install -Dm644 "$builddir/arch/$_carch/boot/dts/mediatek/mt6855.dtb" \
-		"$pkgdir/boot/dtbs/mediatek/mt6855.dtb"
-
-	_make modules_install \
+	make O="$_outdir" ARCH="$_carch" LLVM=1 LLVM_IAS=1 \
+		modules_install \
 		INSTALL_MOD_PATH="$pkgdir"/usr \
 		INSTALL_MOD_STRIP=1
 
 	# "build" / "source" would point at the build host
 	rm -f "$pkgdir"/usr/lib/modules/*/build "$pkgdir"/usr/lib/modules/*/source
 
-	install -Dm644 "$builddir/include/config/kernel.release" \
-		"$pkgdir/usr/share/kernel/$_flavor/kernel.release"
+	install -Dm644 "$builddir/$_outdir/arch/$_carch/boot/dts/mediatek/mt6855.dtb" \
+		"$pkgdir/boot/dtbs/mediatek/mt6855.dtb"
 }
 
 # The tarball checksum is filled in by `pmbootstrap checksum linux-motorola-devonf`
