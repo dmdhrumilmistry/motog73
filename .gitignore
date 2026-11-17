@@ -1,0 +1,41 @@
+# Build outputs
+out/
+build-out/
+*.o
+*.ko
+*.img
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.apk
+*.log
+
+# Proprietary firmware / blobs must never be committed.
+# Put your own stock firmware dumps here; they stay local.
+firmware/
+stock/
+prebuilts-local/
+recovery/twrp/device/motorola/devonf/prebuilt/
+
+# Signing keys and secrets (generate your own, keep them private)
+keys/
+*.pem
+*.pk8
+*.x509.pem
+*.key
+*.jks
+*.keystore
+.env
+.env.*
+
+# Source checkouts created by helper scripts
+src/
+.repo/
+
+# Editor / OS noise
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
