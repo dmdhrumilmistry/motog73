@@ -43,7 +43,7 @@ Motorola's matching open source kernel release.
 
 | Component | State |
 | :--- | :--- |
-| Kernel from source (`MMI-U1TNS34.82-12-7-26`) | Builds with AOSP clang r416183b: `Image.gz`, 618 modules and `mt6855.dtb` (built locally on 2026-11-17). CI build is a manual workflow. |
+| Kernel from source (`MMI-U1TNS34.82-12-7-26`) | Builds with AOSP clang r416183b, and with clang 18 using `-W`: `Image.gz`, 618 modules and `mt6855.dtb` (both built locally on 2026-11-17). CI build is a manual workflow. |
 | LineageOS 24.0 + G73 Open | Build setup on top of the maintained community device tree. Not built by this project yet. |
 | TWRP | Device tree plus safe `vendor_boot` injection. Data decryption not supported yet. Not built yet. |
 | postmarketOS | Packages follow pmaports `device/downstream` conventions and pass offline checks. Not built with pmbootstrap yet. |
