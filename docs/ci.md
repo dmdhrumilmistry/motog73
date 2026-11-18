@@ -34,13 +34,16 @@ Details:
 
 ## Runner disk and swap
 
-GitHub runners have little free space on `/`, so the big jobs use `/mnt`
-(the larger temporary disk) for work directories and swap files:
+The big jobs use work directories under `/mnt`. On current hosted runners `/`
+and `/mnt` are one device-mapper copy-on-write volume. Swapping onto it under
+heavy memory pressure can hang the VM, and the runner then disappears without
+logs. The TWRP job, which really needs more than 16 GB, therefore swaps to
+zram (compressed RAM) instead of a swap file:
 
 | Job | Work dir | Swap |
 | :--- | :--- | :--- |
 | kernel | `/mnt` | 20 GB on `/mnt` |
-| TWRP | `/mnt` | 24 GB on `/` (Soong needs more than 16 GB RAM; `/mnt` is full of sources) |
+| TWRP | `/mnt` | 24 GB zram (compressed RAM) |
 | postmarketOS | `/mnt` | 8 GB on `/mnt` |
 
 ## Cutting a release

@@ -8,8 +8,12 @@
 #
 #   --free-disk        remove preinstalled toolchains this project does not need
 #   --swap GB          replace swap with a GB-gigabyte swap file
-#   --swap-file PATH   where to put the swap file (default /mnt/swapfile); use a
-#                      path on / when /mnt is needed for sources
+#   --swap-file PATH   where to put the swap file (default /mnt/swapfile)
+#   --zram GB          use a GB-gigabyte compressed RAM swap (zram) instead of a
+#                      swap file. Hosted runners keep / and /mnt on one
+#                      device-mapper copy-on-write volume, and swapping onto it
+#                      under memory pressure can hang the VM (the runner then
+#                      dies without logs). zram avoids the disk entirely.
 #   --workdir DIR      create DIR on the big disk, owned by the current user
 #
 set -euo pipefail
@@ -17,10 +21,11 @@ set -euo pipefail
 FREE_DISK=0
 SWAP_GB=""
 SWAP_FILE="/mnt/swapfile"
+ZRAM_GB=""
 WORKDIR=""
 
 usage() {
-    echo "Usage: $(basename "$0") [--free-disk] [--swap GB] [--swap-file PATH] [--workdir DIR]"
+    echo "Usage: $(basename "$0") [--free-disk] [--swap GB] [--swap-file PATH] [--zram GB] [--workdir DIR]"
 }
 
 while [ $# -gt 0 ]; do
@@ -29,6 +34,9 @@ while [ $# -gt 0 ]; do
         --swap)
             [ $# -ge 2 ] || { usage >&2; exit 2; }
             SWAP_GB="$2"; shift ;;
+        --zram)
+            [ $# -ge 2 ] || { usage >&2; exit 2; }
+            ZRAM_GB="$2"; shift ;;
         --swap-file)
             [ $# -ge 2 ] || { usage >&2; exit 2; }
             SWAP_FILE="$2"; shift ;;
@@ -56,6 +64,21 @@ if [ -n "$SWAP_GB" ]; then
     sudo swapon "$SWAP_FILE"
 fi
 
+if [ -n "$ZRAM_GB" ]; then
+    sudo swapoff -a
+    sudo rm -f /mnt/swapfile
+    if ! sudo modprobe zram 2>/dev/null; then
+        sudo apt-get install -y -q "linux-modules-extra-$(uname -r)" >/dev/null
+        sudo modprobe zram
+    fi
+    dev="$(sudo zramctl --find --size "${ZRAM_GB}G" --algorithm zstd 2>/dev/null \
+           || sudo zramctl --find --size "${ZRAM_GB}G" --algorithm lz4)"
+    sudo mkswap "$dev"
+    sudo swapon --priority 100 "$dev"
+    # Swap eagerly to compressed RAM rather than thrashing the page cache.
+    sudo sysctl -q vm.swappiness=180 vm.page-cluster=0 || sudo sysctl -q vm.swappiness=100
+fi
+
 if [ -n "$WORKDIR" ]; then
     sudo mkdir -p "$WORKDIR"
     sudo chown "$USER:" "$WORKDIR"
@@ -63,3 +86,4 @@ fi
 
 df -h / /mnt
 free -h
+swapon --show || true
