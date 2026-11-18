@@ -151,7 +151,11 @@ if [[ "$CONFIG_ONLY" == 1 ]]; then
 fi
 
 echo ">> Building ${TARGETS[*]} with $JOBS jobs"
-"${MAKE[@]}" "${TARGETS[@]}"
+# One target at a time: the full-LTO vmlinux link needs ~16 GB on its own and
+# must not run next to parallel module compiles.
+for target in "${TARGETS[@]}"; do
+    "${MAKE[@]}" "$target"
+done
 
 DIST="$OUT/dist"
 rm -rf "$DIST"

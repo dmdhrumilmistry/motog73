@@ -54,6 +54,10 @@ jobs:
           SRC: /mnt/build/kernel-5.10
           OUT: /mnt/build/out
         run: |
+          # If memory runs out, let the kernel OOM killer pick the build rather
+          # than the runner agent (a killed agent leaves no logs at all). The
+          # build is then retried with -j1 below.
+          echo 1000 > /proc/self/oom_score_adj
           case "$FLAVOR" in
             g73open)      extra=-g ;;
             postmarketos) extra=-p ;;
