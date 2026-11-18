@@ -98,6 +98,10 @@ for target in "twrp_devonf-${TWRP_RELEASE:-ap2a}-eng" twrp_devonf-eng; do
 done
 rm -f "$lunch_log"
 [[ "$lunched" == 1 ]] || { echo "error: lunch failed for twrp_devonf (output above)" >&2; exit 1; }
+# The twrp_ramdisk step copies these from the system output, but TWRP only
+# lists them as dependencies when crypto is enabled (it is disabled here),
+# so build them first.
+m -j"$JOBS" task_profiles.json mke2fs.conf plat_keystore2_key_contexts
 m -j"$JOBS" vendorbootimage
 set -u
 

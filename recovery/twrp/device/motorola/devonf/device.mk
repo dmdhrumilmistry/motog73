@@ -17,6 +17,13 @@ PRODUCT_PACKAGES += \
 # Shipping API level (the device launched with Android 13)
 PRODUCT_SHIPPING_API_LEVEL := 33
 
+# Copied into the recovery ramdisk by TWRP's twrp_ramdisk step, but only
+# pulled in automatically when crypto is enabled (it is not, see BoardConfig).
+PRODUCT_PACKAGES += \
+    mke2fs.conf \
+    plat_keystore2_key_contexts \
+    task_profiles.json
+
 # Soong namespaces
 PRODUCT_SOONG_NAMESPACES += \
     $(LOCAL_PATH)
