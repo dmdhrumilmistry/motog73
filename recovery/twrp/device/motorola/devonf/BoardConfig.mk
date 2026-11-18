@@ -134,13 +134,14 @@ BOARD_AVB_RECOVERY_ROLLBACK_INDEX_LOCATION := 1
 PLATFORM_VERSION := 99.87.36
 VENDOR_SECURITY_PATCH := 2099-12-31
 
-# Encryption (FBE v2 + metadata encryption, wrapped keys).
-# Decryption needs MediaTek/Trustonic keymint blobs that are proprietary and
-# not shipped here, so /data decryption is NOT expected to work yet.
-TW_INCLUDE_CRYPTO := true
-TW_INCLUDE_CRYPTO_FBE := true
-TW_INCLUDE_FBE_METADATA_DECRYPT := true
-TW_USE_FSCRYPT_POLICY := 2
+# Encryption: not built in.
+# Stock uses FBE v2 + metadata encryption with wrapped keys, which needs the
+# proprietary MediaTek/Trustonic keymint blobs to decrypt, so /data
+# decryption cannot work without them anyway. TWRP 14.1's crypto support
+# also links the old "-ndk_platform" keystore libraries, which the minimal
+# manifest no longer provides, so enabling it breaks the build. Re-enable
+# (TW_INCLUDE_CRYPTO, TW_INCLUDE_CRYPTO_FBE, TW_INCLUDE_FBE_METADATA_DECRYPT,
+# TW_USE_FSCRYPT_POLICY := 2) together with the vendor blobs if you add them.
 
 # TWRP configuration
 TW_THEME := portrait_hdpi

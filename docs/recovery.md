@@ -65,7 +65,7 @@ fastboot flash vendor_boot_<slot> stock/devonf/images/vendor_boot.img
 | Flashing images (boot/vendor_boot/dtbo/logo) | Expected to work |
 | Backup/restore of partitions (incl. NVRAM, nvdata, persist) | Expected to work. **Keep these backups private:** they contain the IMEI and calibration data. |
 | microSD / MTP | Expected to work |
-| /data decryption | **Not working yet.** It needs MediaTek/Trustonic keymint blobs, which are proprietary and not shipped here. |
+| /data decryption | **Not included.** It needs MediaTek/Trustonic keymint blobs, which are proprietary and not shipped here, so crypto support is disabled in this build. Backups of `/data` are not possible while it is encrypted; ADB sideload, flashing images and the other partitions work without it. |
 | Slot switching from TWRP | Not supported (MediaTek boot-control HAL is proprietary). Use `fastboot set_active a\|b`. |
 
 "Expected to work" means the configuration follows the stock layout but has
