@@ -61,6 +61,24 @@ Each module has its own Kbuild under `vendor/mediatek/kernel_modules/` and
 `motorola/kernel/modules/`. Build them against your kernel output with
 `make -C kernel-5.10 O=<out> M=<module dir> ...`.
 
+## Prebuilt kernel (from CI)
+
+Once a release exists (none yet, and untested on hardware), download
+`devonf-kernel-Image.gz`, `devonf-kernel-mt6855.dtb`,
+`devonf-kernel-modules.tar.xz` and `devonf-kernel.release` from the
+[Releases page](https://github.com/dmdhrumilmistry/motog73/releases) and
+verify them with `sha256sum -c SHA256SUMS`. The `Image.gz` goes into your own
+stock `boot.img`; try it with `fastboot boot` before flashing anything:
+
+```sh
+scripts/repack-boot.sh -s stock/devonf/images/boot.img \
+    -k devonf-kernel-Image.gz -o boot-ci.img
+fastboot boot boot-ci.img
+```
+
+The modules tarball and DTB are for reference and for the TWRP and
+postmarketOS builds; see the warning on KMI compatibility below.
+
 ## Using a custom kernel on Android
 
 Because of GKI, the stock `vendor_boot` and `vendor_dlkm` modules only load if

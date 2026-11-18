@@ -80,6 +80,34 @@ Then connect over USB networking:
 ssh user@172.16.42.1
 ```
 
+## Prebuilt image (from CI)
+
+Once a release exists (none yet, and untested on hardware), download from the
+[Releases page](https://github.com/dmdhrumilmistry/motog73/releases)
+`devonf-pmos-<ui>-rootfs.img.xz` (default UI `console`), `devonf-pmos-boot.img`
+and, if present, `devonf-pmos-vendor_boot.img`. Check them with
+`sha256sum -c SHA256SUMS`, then:
+
+```sh
+unxz devonf-pmos-console-rootfs.img.xz
+adb reboot bootloader
+scripts/flash.sh check
+fastboot flash userdata devonf-pmos-console-rootfs.img   # wipes Android data
+fastboot flash boot devonf-pmos-boot.img
+fastboot flash vendor_boot devonf-pmos-vendor_boot.img   # only if the file exists
+fastboot reboot
+```
+
+Flashing `vendor_boot` replaces your stock one; keep your stock images
+(see [Going back to Android](#going-back-to-android)).
+
+The default login is `user` / `147147`. **Change it right after first boot**
+(`passwd`), and do not expose SSH before that.
+
+To reproduce the CI build locally, run
+`linux/postmarketos/ci-build.sh <ui> <outdir>` (see
+[ci.md](ci.md)).
+
 ## Going back to Android
 
 Flash the stock images back (or the full firmware, see

@@ -23,6 +23,35 @@ Motorola's matching open source kernel release.
 | [`scripts/`](scripts) | Extract stock images, repack `boot`/`vendor_boot` safely, flash helpers with device checks, restore stock from `flashfile.xml` |
 | [`docs/`](docs) | Guides (start below) |
 
+## Download prebuilt
+
+GitHub Actions can build the kernel, TWRP and a postmarketOS image for you.
+Builds are published as prereleases on the
+[Releases page](https://github.com/dmdhrumilmistry/motog73/releases).
+
+> **No release has been published yet.** The first one appears when the first
+> `v*` tag is pushed. Nothing here has been tested on hardware.
+
+| Asset | What it is |
+| :--- | :--- |
+| `devonf-kernel-Image.gz`, `devonf-kernel-mt6855.dtb`, `devonf-kernel-modules.tar.xz`, `devonf-kernel-config`, `devonf-kernel.release` | Kernel built from Motorola's source ([docs/kernel.md](docs/kernel.md)) |
+| `devonf-twrp-recovery-ramdisk.cpio.lz4` | TWRP recovery ramdisk. **Not flashable as is:** repack it into your own stock `vendor_boot` ([docs/recovery.md](docs/recovery.md)) |
+| `devonf-pmos-<ui>-rootfs.img.xz`, `devonf-pmos-boot.img`, maybe `devonf-pmos-vendor_boot.img` | postmarketOS image ([docs/linux.md](docs/linux.md)) |
+| `SHA256SUMS` | Checksums of all assets |
+
+Verify your downloads before using them:
+
+```sh
+sha256sum -c SHA256SUMS
+```
+
+How the workflows work and how to cut a release: [docs/ci.md](docs/ci.md).
+
+**LineageOS is not built in CI.** A ROM build needs about 300 GB of disk and
+32 GB of RAM, more than GitHub's free runners offer. `rom.yml` only runs on a
+self-hosted runner, and ROM builds include community vendor blobs, so they are
+not published here. See [docs/build-rom.md](docs/build-rom.md).
+
 ## Quick start
 
 1. **Read [docs/device-info.md](docs/device-info.md)** and confirm your phone is a `devonf`:
@@ -37,6 +66,7 @@ Motorola's matching open source kernel release.
 | Custom recovery (Lineage Recovery / TWRP / others) | [docs/recovery.md](docs/recovery.md) |
 | Build the kernel | [docs/kernel.md](docs/kernel.md) |
 | Run Linux (postmarketOS) | [docs/linux.md](docs/linux.md) |
+| How CI builds and releases work | [docs/ci.md](docs/ci.md) |
 | Go back to stock / unbrick | [docs/restore-stock.md](docs/restore-stock.md) |
 
 ## Status
@@ -47,6 +77,7 @@ Motorola's matching open source kernel release.
 | LineageOS 24.0 + G73 Open | Build setup on top of the maintained community device tree. Not built by this project yet. |
 | TWRP | Device tree plus safe `vendor_boot` injection. Data decryption not supported yet. Not built yet. |
 | postmarketOS | Packages follow pmaports `device/downstream` conventions and pass offline checks. Not built with pmbootstrap yet. |
+| Release workflow | Added, first run pending. No release published yet. |
 | Helper scripts | Repack, flashfile and package checks tested offline on synthetic data (`tests/run-tests.sh`, runs in CI) |
 
 **Nothing is tested on real hardware yet.** Please report what works with

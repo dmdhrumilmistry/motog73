@@ -72,6 +72,28 @@ fastboot flash vendor_boot_<slot> stock/devonf/images/vendor_boot.img
 not yet been confirmed on hardware by this project. Please report results
 with the issue template.
 
+## Prebuilt TWRP (from CI)
+
+Once a release exists (none yet, and untested on hardware), you can skip the
+build. Download from the
+[Releases page](https://github.com/dmdhrumilmistry/motog73/releases)
+(or the `devonf-twrp` workflow artifact) the file
+`devonf-twrp-recovery-ramdisk.cpio.lz4`, plus `SHA256SUMS`, and check it with
+`sha256sum -c SHA256SUMS`. Then inject it into **your own** stock `vendor_boot`:
+
+```sh
+scripts/extract-stock-images.sh <stock-firmware.zip> stock/devonf
+scripts/repack-vendor-boot.sh -s stock/devonf/images/vendor_boot.img \
+    -r devonf-twrp-recovery-ramdisk.cpio.lz4 -o twrp-vendor_boot.img
+scripts/flash.sh recovery twrp-vendor_boot.img
+```
+
+**Never flash `devonf-twrp-vendor_boot-raw-DO-NOT-FLASH.img`.** It is built
+from scratch and lacks the stock vendor ramdisk (first-stage fstab and the
+modules, including touch), so normal boot breaks. It is only an artifact for
+inspection. `repack-vendor-boot.sh -e OUT` extracts a recovery fragment from a
+`vendor_boot` image if you need one.
+
 ## Option 3: Any other recovery (OrangeFox, …)
 
 Any recovery that builds a `RECOVERY`-type vendor ramdisk fragment can be

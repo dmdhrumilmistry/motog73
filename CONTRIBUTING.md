@@ -15,6 +15,9 @@ and docs.
 3. **Keep it reproducible.** Pin upstream revisions (tags or branches) in
    manifests and APKBUILDs.
 4. **Shell scripts** must pass `shellcheck`. XML must be well-formed. CI checks both.
+5. **GitHub Actions workflows** in `.github/workflows/` must pass `actionlint`
+   (CI runs it; locally: `pip install actionlint-py` then `actionlint`). See
+   [docs/ci.md](docs/ci.md) for what the workflows do.
 
 ## Workflow
 
