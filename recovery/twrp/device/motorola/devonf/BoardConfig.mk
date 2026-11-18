@@ -76,7 +76,6 @@ BOARD_USES_GENERIC_KERNEL_IMAGE := true
 
 # Recovery lives in vendor_boot (there is no recovery partition)
 BOARD_USES_RECOVERY_AS_BOOT :=
-BOARD_EXCLUDE_KERNEL_FROM_RECOVERY_IMAGE := true
 BOARD_MOVE_RECOVERY_RESOURCES_TO_VENDOR_BOOT := true
 BOARD_INCLUDE_RECOVERY_RAMDISK_IN_VENDOR_BOOT := true
 TARGET_NO_RECOVERY := true
@@ -103,6 +102,12 @@ BOARD_MOTOROLA_DYNAMIC_PARTITIONS_SIZE := 5498732544
 
 BOARD_SYSTEMIMAGE_PARTITION_TYPE := erofs
 BOARD_USERDATAIMAGE_FILE_SYSTEM_TYPE := f2fs
+# Logical partitions are erofs on stock; the build requires a type for each
+# partition that is not folded into another one.
+BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE := erofs
+BOARD_PRODUCTIMAGE_FILE_SYSTEM_TYPE := erofs
+BOARD_SYSTEM_EXTIMAGE_FILE_SYSTEM_TYPE := erofs
+BOARD_VENDOR_DLKMIMAGE_FILE_SYSTEM_TYPE := erofs
 TARGET_USERIMAGES_USE_EXT4 := true
 TARGET_USERIMAGES_USE_F2FS := true
 TARGET_COPY_OUT_VENDOR := vendor
@@ -122,19 +127,21 @@ BOARD_AVB_RECOVERY_ALGORITHM := SHA256_RSA4096
 BOARD_AVB_RECOVERY_ROLLBACK_INDEX := 1
 BOARD_AVB_RECOVERY_ROLLBACK_INDEX_LOCATION := 1
 
-# Anti-rollback: keep these far in the future so TWRP is never refused
-PLATFORM_SECURITY_PATCH := 2099-12-31
-VENDOR_SECURITY_PATCH := 2099-12-31
+# Version shown to TWRP (used for decryption checks). Android 14 builds take
+# PLATFORM_SECURITY_PATCH and PLATFORM_VERSION_LAST_STABLE from release flags
+# and refuse them here. No anti-rollback override is needed: the recovery
+# ramdisk is injected into the stock vendor_boot, which keeps its header.
 PLATFORM_VERSION := 99.87.36
-PLATFORM_VERSION_LAST_STABLE := $(PLATFORM_VERSION)
+VENDOR_SECURITY_PATCH := 2099-12-31
 
-# Encryption (FBE v2 + metadata encryption, wrapped keys).
-# Decryption needs MediaTek/Trustonic keymint blobs that are proprietary and
-# not shipped here, so /data decryption is NOT expected to work yet.
-TW_INCLUDE_CRYPTO := true
-TW_INCLUDE_CRYPTO_FBE := true
-TW_INCLUDE_FBE_METADATA_DECRYPT := true
-TW_USE_FSCRYPT_POLICY := 2
+# Encryption: not built in.
+# Stock uses FBE v2 + metadata encryption with wrapped keys, which needs the
+# proprietary MediaTek/Trustonic keymint blobs to decrypt, so /data
+# decryption cannot work without them anyway. TWRP 14.1's crypto support
+# also links the old "-ndk_platform" keystore libraries, which the minimal
+# manifest no longer provides, so enabling it breaks the build. Re-enable
+# (TW_INCLUDE_CRYPTO, TW_INCLUDE_CRYPTO_FBE, TW_INCLUDE_FBE_METADATA_DECRYPT,
+# TW_USE_FSCRYPT_POLICY := 2) together with the vendor blobs if you add them.
 
 # TWRP configuration
 TW_THEME := portrait_hdpi

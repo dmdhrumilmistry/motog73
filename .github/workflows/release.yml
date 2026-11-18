@@ -1,0 +1,121 @@
+# Publishes a GitHub Release. Runs only on v* tags or a manual run with a
+# tag; pull requests are built (never released) by build.yml.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Tag for a DRAFT release at the current commit'
+        type: string
+        required: true
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  kernel:
+    uses: ./.github/workflows/kernel.yml
+    with:
+      flavor: g73open
+
+  twrp:
+    needs: kernel
+    uses: ./.github/workflows/twrp.yml
+    with:
+      kernel_artifact: devonf-kernel
+
+  pmos:
+    uses: ./.github/workflows/postmarketos.yml
+
+  release:
+    needs: [kernel, twrp, pmos]
+    if: ${{ !cancelled() && needs.kernel.result == 'success' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download kernel artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: devonf-kernel
+          path: assets
+
+      - name: Download TWRP artifact
+        if: needs.twrp.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: devonf-twrp
+          path: assets
+        continue-on-error: true
+
+      - name: Download postmarketOS artifact
+        if: needs.pmos.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: devonf-pmos
+          path: assets
+        continue-on-error: true
+
+      - name: Checksums
+        working-directory: assets
+        run: |
+          set -euo pipefail
+          rm -f SHA256SUMS
+          find . -type f ! -name SHA256SUMS -printf '%P\n' | sort > ../files.txt
+          xargs -d '\n' sha256sum < ../files.txt > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Render release notes
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_TAG: ${{ inputs.release_tag }}
+          KERNEL_RELEASE: ${{ needs.kernel.outputs.kernel_release }}
+          TWRP_RESULT: ${{ needs.twrp.result }}
+          PMOS_RESULT: ${{ needs.pmos.result }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "push" ]]; then
+            TAG="$REF_NAME"
+          else
+            TAG="$INPUT_TAG"
+          fi
+          COMPONENTS="- Kernel (Image.gz, DTB, modules, config)"
+          if [[ "$TWRP_RESULT" == "success" ]]; then
+            COMPONENTS+=$'\n'"- TWRP recovery ramdisk"
+          fi
+          if [[ "$PMOS_RESULT" == "success" ]]; then
+            COMPONENTS+=$'\n'"- postmarketOS (boot image, rootfs)"
+          fi
+          export TAG COMPONENTS
+          # shellcheck disable=SC2016  # envsubst variable list, must stay literal
+          envsubst '${TAG} ${KERNEL_RELEASE} ${COMPONENTS} ${COMMIT}' \
+            < .github/release-notes.md.in > notes.md
+          echo "$TAG" > tag.txt
+          cat notes.md
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          TAG="$(cat tag.txt)"
+          args=(--prerelease --notes-file notes.md --title "devonf $TAG")
+          if [[ "$EVENT_NAME" == "push" ]]; then
+            args+=(--verify-tag)
+          else
+            args+=(--draft --target "$COMMIT")
+          fi
+          gh release create "$TAG" assets/* "${args[@]}"

@@ -198,6 +198,13 @@ def main():
            "device APKBUILD: depends has postmarketos-base")
     report("!archcheck" in dv.get("options", "").split(),
            "device APKBUILD: options has !archcheck")
+    if info.get("deviceinfo_generate_bootimg") == "true":
+        # boot-deploy refuses to create boot.img without android-tools
+        report("android-tools" in dv.get("depends", "").split(),
+               "device APKBUILD: depends has android-tools (generate_bootimg)")
+    report(not any(m.startswith("maintainer") and '""' in m
+                   for m in read(os.path.join(DEV_DIR, "APKBUILD")).splitlines()),
+           "device APKBUILD: maintainer is set (abuild requires it)")
     report(dv.get("arch") == info.get("deviceinfo_arch"),
            f"device APKBUILD: arch ({dv.get('arch')}) equals deviceinfo_arch "
            f"({info.get('deviceinfo_arch')})")

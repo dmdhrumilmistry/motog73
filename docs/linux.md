@@ -80,6 +80,34 @@ Then connect over USB networking:
 ssh user@172.16.42.1
 ```
 
+## Prebuilt image (from CI)
+
+Once a release exists (none yet, and untested on hardware), download from the
+[Releases page](https://github.com/dmdhrumilmistry/motog73/releases)
+`devonf-pmos-<ui>-rootfs.img.xz` (default UI `console`), `devonf-pmos-boot.img`
+and, if present, `devonf-pmos-vendor_boot.img`. Check them with
+`sha256sum -c SHA256SUMS`, then:
+
+```sh
+unxz devonf-pmos-console-rootfs.img.xz
+adb reboot bootloader
+scripts/flash.sh check
+fastboot flash userdata devonf-pmos-console-rootfs.img   # wipes Android data
+fastboot flash boot devonf-pmos-boot.img
+fastboot flash vendor_boot devonf-pmos-vendor_boot.img   # only if the file exists
+fastboot reboot
+```
+
+Flashing `vendor_boot` replaces your stock one; keep your stock images
+(see [Going back to Android](#going-back-to-android)).
+
+The default login is `user` / `147147`. **Change it right after first boot**
+(`passwd`), and do not expose SSH before that.
+
+To reproduce the CI build locally, run
+`linux/postmarketos/ci-build.sh <ui> <outdir>` (see
+[ci.md](ci.md)).
+
 ## Going back to Android
 
 Flash the stock images back (or the full firmware, see
@@ -95,8 +123,11 @@ fastboot -w
 
 - The kernel package uses pmaports' `downstreamkernel_prepare` (which strips
   `-Werror` from the kernel Makefiles, so newer clang warnings do not break
-  MediaTek drivers) and `downstreamkernel_package`. It is built with the
-  distro clang (`LLVM=1`).
+  MediaTek drivers) and `downstreamkernel_package`. It is built with
+  Alpine's `clang18` package (`LLVM=1`, `/usr/lib/llvm18/bin` on `PATH`):
+  clang 23 from Alpine edge rejects a `double` passed to `printk` in the
+  MediaTek display driver. The package also carries a one-line patch for
+  that spot, so newer clang releases get further.
 - `postmarketos.config` disables `CONFIG_WERROR`, LTO (`CONFIG_LTO_NONE`) and
   `CFI_CLANG`. That is acceptable because postmarketOS does not load the stock
   GKI vendor modules.
@@ -116,7 +147,7 @@ fastboot -w
 ## Upstreaming to pmaports
 
 - [ ] The port boots on real hardware first.
-- [ ] Set `maintainer=` in both APKBUILDs.
+- [ ] Check `maintainer=` in both APKBUILDs (abuild refuses to build without a valid name and email).
 - [ ] `pmbootstrap checksum device-motorola-devonf linux-motorola-devonf`
 - [ ] `pmbootstrap lint`
 - [ ] Lint `deviceinfo` with `dint`.

@@ -51,6 +51,7 @@ Options:
   -f FILE       extra config fragment to merge (repeatable)
   -p            merge kernel/configs/postmarketos.config (Linux flavor)
   -g            merge kernel/configs/g73open.config (custom ROM flavor)
+  -L            merge kernel/configs/thinlto.config (ThinLTO, far less RAM)
   -W            build with a newer clang: merge configs/no-werror.config and
                 pass -Wno-error=<w> for the warnings MediaTek drivers trip on
   -c DIR        clang toolchain directory (e.g. AOSP clang-r416183b);
@@ -62,7 +63,7 @@ EOF
 }
 
 CONFIG_ONLY=0
-while getopts "t:s:o:v:f:pgWc:kj:h" opt; do
+while getopts "t:s:o:v:f:pgWLc:kj:h" opt; do
     case "$opt" in
         t) TAG="$OPTARG" ;;
         s) SRC="$OPTARG" ;;
@@ -72,6 +73,7 @@ while getopts "t:s:o:v:f:pgWc:kj:h" opt; do
         p) FRAGMENTS+=("$ROOT/kernel/configs/postmarketos.config") ;;
         g) FRAGMENTS+=("$ROOT/kernel/configs/g73open.config") ;;
         W) FRAGMENTS+=("$ROOT/kernel/configs/no-werror.config"); NEW_CLANG=1 ;;
+        L) FRAGMENTS+=("$ROOT/kernel/configs/thinlto.config") ;;
         c) CLANG_DIR="$OPTARG" ;;
         k) CONFIG_ONLY=1 ;;
         j) JOBS="$OPTARG" ;;
@@ -151,7 +153,11 @@ if [[ "$CONFIG_ONLY" == 1 ]]; then
 fi
 
 echo ">> Building ${TARGETS[*]} with $JOBS jobs"
-"${MAKE[@]}" "${TARGETS[@]}"
+# One target at a time: the full-LTO vmlinux link needs ~16 GB on its own and
+# must not run next to parallel module compiles.
+for target in "${TARGETS[@]}"; do
+    "${MAKE[@]}" "$target"
+done
 
 DIST="$OUT/dist"
 rm -rf "$DIST"

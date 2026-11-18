@@ -71,7 +71,15 @@ if "$ROOT/scripts/repack-vendor-boot.sh" -s rec1.lz4 -r rec1.lz4 -o bad.img 2>/d
 fi
 ok "repack-vendor-boot rejects invalid input"
 
-# 4. Boot image kernel swap.
+# 4. Extract the recovery fragment of a vendor_boot image (-e).
+"$ROOT/scripts/repack-vendor-boot.sh" -e extracted.lz4 -r twrp_vendor_boot.img >/dev/null
+cmp -s extracted.lz4 rec2.lz4 || fail "-e did not extract the recovery fragment"
+if "$ROOT/scripts/repack-vendor-boot.sh" -e none.lz4 -r stock_vendor_boot.img 2>/dev/null; then
+    fail "-e accepted an image without recovery fragment"
+fi
+ok "repack-vendor-boot -e extracts the recovery fragment"
+
+# 5. Boot image kernel swap.
 head -c 4000 /dev/urandom > k1
 head -c 6000 /dev/urandom > k2
 "${MKBOOTIMG[@]}" --header_version 4 --kernel k1 --ramdisk rec1.lz4 \
@@ -83,7 +91,7 @@ cmp -s ub/ramdisk rec1.lz4 || fail "ramdisk changed"
 grep -q "os patch level: 2025-09" infob.txt || fail "patch level lost"
 ok "repack-boot swaps kernel and keeps header fields"
 
-# 5. flashfile.xml parsing, MD5 checks and --keep-data.
+# 6. flashfile.xml parsing, MD5 checks and --keep-data.
 mkdir fw
 echo a > fw/boot.img
 cat > fw/flashfile.xml <<XML
@@ -109,12 +117,12 @@ if python3 "$ROOT/scripts/moto-flashfile.py" fw >/dev/null 2>&1; then
 fi
 ok "moto-flashfile parses steps, honours --keep-data and checks MD5"
 
-# 6. postmarketOS package validation (checks against $PMAPORTS schema if set).
+# 7. postmarketOS package validation (checks against $PMAPORTS schema if set).
 python3 "$ROOT/tests/check-pmos-packages.py" >pmos-check.txt 2>&1 \
     || { cat pmos-check.txt >&2; fail "postmarketOS package checks failed"; }
 ok "postmarketOS packages pass offline validation"
 
-# 7. pmaports-import.sh dry run copies both packages and prints pmbootstrap commands.
+# 8. pmaports-import.sh dry run copies both packages and prints pmbootstrap commands.
 mkdir -p fake-pmaports/device
 : > fake-pmaports/deviceinfo_schema.toml
 "$ROOT/linux/postmarketos/pmaports-import.sh" --dry-run --pmaports fake-pmaports >import.txt 2>&1 \

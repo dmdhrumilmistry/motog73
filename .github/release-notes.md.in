@@ -1,0 +1,77 @@
+# devonf ${TAG}
+
+> **WARNING: UNTESTED ON HARDWARE.**
+> These images have not been verified on a real moto g73 5G. They can fail
+> to boot, brick the device or lose your data. Only use them if you have the
+> complete stock firmware for your exact build and know how to restore it.
+
+## What is included
+
+${COMPONENTS}
+
+Kernel release: `${KERNEL_RELEASE}`
+
+Verify your download before using anything:
+
+```
+sha256sum -c SHA256SUMS
+```
+
+## TWRP recovery
+
+Never flash the raw vendor_boot image from this release
+(`devonf-twrp-vendor_boot-raw-DO-NOT-FLASH.img`). It lacks the stock vendor
+ramdisk (first-stage fstab and kernel modules, including the touchscreen
+driver), so a normal boot breaks. Repack the recovery ramdisk into YOUR stock
+vendor_boot instead:
+
+```
+scripts/extract-stock-images.sh <your-stock-firmware.zip> stock/devonf
+scripts/repack-vendor-boot.sh -s stock/devonf/images/vendor_boot.img -r devonf-twrp-recovery-ramdisk.cpio.lz4 -o twrp-vendor_boot.img
+scripts/flash.sh recovery twrp-vendor_boot.img
+```
+
+To undo, flash your stock vendor_boot.img back to the active slot (see
+docs/recovery.md).
+
+## Kernel
+
+```
+scripts/repack-boot.sh -s stock/devonf/images/boot.img -k devonf-kernel-Image.gz -o boot-custom.img
+fastboot boot boot-custom.img
+```
+
+Try the temporary `fastboot boot` first. Only flash it permanently
+(`scripts/flash.sh kernel boot-custom.img`) once it works. See docs/kernel.md.
+
+## postmarketOS
+
+This wipes Android user data.
+
+```
+unxz devonf-pmos-<ui>-rootfs.img.xz
+fastboot getvar current-slot
+fastboot flash userdata devonf-pmos-<ui>-rootfs.img
+fastboot flash boot_<slot> devonf-pmos-boot.img
+fastboot flash vendor_boot_<slot> devonf-pmos-vendor_boot.img
+```
+
+Replace `<ui>` with the user interface in the file name and `<slot>` with the
+current slot (a or b). The vendor_boot step only applies if that file is part
+of this release. `scripts/flash.sh linux` does the boot and userdata steps. See
+docs/linux.md.
+
+The default login is `user` / `147147`. Change the password immediately.
+
+## Restore stock
+
+```
+scripts/flash.sh restore <firmware-dir>
+```
+
+See docs/restore-stock.md.
+
+## Notes
+
+No warranty of any kind. Built from commit ${COMMIT}. This repository ships
+no proprietary blobs.

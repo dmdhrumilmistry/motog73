@@ -1,0 +1,115 @@
+name: TWRP build
+
+on:
+  workflow_dispatch:
+    inputs:
+      kernel_artifact:
+        description: "Unused placeholder, leave empty to build the kernel first"
+        type: string
+        default: ''
+      twrp_branch:
+        description: TWRP minimal manifest branch
+        type: string
+        default: twrp-14.1
+  workflow_call:
+    inputs:
+      kernel_artifact:
+        description: "Set to skip the kernel job (artifact devonf-kernel must then exist)"
+        type: string
+        default: ''
+      twrp_branch:
+        description: TWRP minimal manifest branch
+        type: string
+        default: twrp-14.1
+
+permissions:
+  contents: read
+
+jobs:
+  kernel:
+    if: ${{ inputs.kernel_artifact == '' }}
+    uses: ./.github/workflows/kernel.yml
+    with:
+      tag: MMI-U1TNS34.82-12-7-26
+      flavor: g73open
+
+  build:
+    needs: kernel
+    if: ${{ !cancelled() && contains(fromJSON('["success","skipped"]'), needs.kernel.result) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 345
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare runner
+        run: .github/scripts/prepare-runner.sh --free-disk --zram 24 --workdir /mnt/twrp
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q bc bison build-essential ccache curl flex g++-multilib \
+            gcc-multilib git git-lfs gnupg gperf imagemagick lib32readline-dev lib32z1-dev \
+            libelf-dev liblz4-tool lz4 libssl-dev libxml2 libxml2-utils lzop rsync schedtool \
+            squashfs-tools xsltproc zip zlib1g-dev python3 python-is-python3 cpio
+          sudo curl -fsSL -o /usr/local/bin/repo https://storage.googleapis.com/git-repo-downloads/repo
+          sudo chmod a+x /usr/local/bin/repo
+          git config --global user.name CI
+          git config --global user.email ci@localhost
+          git config --global color.ui false
+
+      - name: Download kernel
+        uses: actions/download-artifact@v4
+        with:
+          name: devonf-kernel
+          path: kdist
+
+      - name: Name kernel files
+        run: |
+          mv kdist/devonf-kernel-Image.gz kdist/Image.gz
+          mv kdist/devonf-kernel-mt6855.dtb kdist/mt6855.dtb
+          ls -l kdist
+
+      - name: Build TWRP
+        env:
+          TWRP_DIR: /mnt/twrp/src
+          OUT_DIR: /mnt/twrp/out
+          JOBS: "2"
+          TWRP_BRANCH: ${{ inputs.twrp_branch || 'twrp-14.1' }}
+        run: |
+          # The Android build can need more than the runner's 16 GB of RAM;
+          # extra memory comes from zram (see prepare-runner.sh). If it still
+          # runs out, let the OOM killer pick the build instead of the runner
+          # agent, so logs survive.
+          echo 1000 > /proc/self/oom_score_adj
+          # Print memory/swap use every 2 minutes for diagnosis.
+          ( while sleep 120; do
+              echo "[mem] $(date -u +%H:%M) $(free -m | awk '/^Mem/{printf "used=%sM avail=%sM", $3, $7} /^Swap/{printf " swap=%sM/%sM", $3, $2}')"
+            done ) &
+          monitor=$!
+          trap 'kill $monitor 2>/dev/null || true' EXIT
+          recovery/build-twrp.sh -k kdist
+
+      - name: Free disk space
+        if: always()
+        run: rm -rf /mnt/twrp/src/.repo/project-objects || true
+
+      - name: Check results
+        run: |
+          frag=/mnt/twrp/out/twrp-devonf-recovery-ramdisk.cpio.lz4
+          [[ "$(head -c 4 "$frag" | xxd -p)" == "02214c18" ]] || { echo "not an lz4 legacy stream"; exit 1; }
+          lz4 -dc "$frag" | cpio -t --quiet > listing.txt
+          grep -E '^(system/)?s?bin/recovery$' listing.txt
+          if grep -E '\.ko$' listing.txt; then echo "unexpected kernel modules"; exit 1; fi
+          ls -l /mnt/twrp/out
+
+      - name: Collect artifacts
+        run: |
+          mkdir upload
+          cp /mnt/twrp/out/twrp-devonf-recovery-ramdisk.cpio.lz4 upload/devonf-twrp-recovery-ramdisk.cpio.lz4
+          cp /mnt/twrp/out/twrp-devonf-vendor_boot-raw.img upload/devonf-twrp-vendor_boot-raw-DO-NOT-FLASH.img
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: devonf-twrp
+          path: upload/
+          if-no-files-found: error

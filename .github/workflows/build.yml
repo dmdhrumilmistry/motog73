@@ -1,0 +1,72 @@
+# Builds kernel, TWRP and postmarketOS. Never publishes anything:
+# releases are made by release.yml (tags / manual run with a tag).
+name: Build
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/**'
+      - 'kernel/**'
+      - 'recovery/**'
+      - 'linux/postmarketos/**'
+      - 'scripts/repack-vendor-boot.sh'
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-24.04
+    outputs:
+      twrp: ${{ steps.filter.outputs.twrp }}
+      pmos: ${{ steps.filter.outputs.pmos }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Decide which images to build
+        id: filter
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          twrp=true
+          pmos=true
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            files="$(git diff --name-only "origin/$BASE_REF...HEAD")"
+            echo "Changed files:"
+            echo "$files"
+            twrp=false
+            pmos=false
+            if grep -qE '^(recovery/|scripts/repack-vendor-boot\.sh$|\.github/workflows/twrp\.yml$|\.github/workflows/build\.yml$|\.github/scripts/)' <<<"$files"; then
+              twrp=true
+            fi
+            if grep -qE '^(linux/postmarketos/|kernel/configs/postmarketos\.config$|\.github/workflows/postmarketos\.yml$|\.github/workflows/build\.yml$|\.github/scripts/)' <<<"$files"; then
+              pmos=true
+            fi
+          fi
+          echo "twrp=$twrp" >> "$GITHUB_OUTPUT"
+          echo "pmos=$pmos" >> "$GITHUB_OUTPUT"
+
+  kernel:
+    uses: ./.github/workflows/kernel.yml
+    with:
+      flavor: g73open
+
+  twrp:
+    needs: [kernel, changes]
+    if: needs.changes.outputs.twrp == 'true'
+    uses: ./.github/workflows/twrp.yml
+    with:
+      kernel_artifact: devonf-kernel
+
+  pmos:
+    needs: changes
+    if: needs.changes.outputs.pmos == 'true'
+    uses: ./.github/workflows/postmarketos.yml

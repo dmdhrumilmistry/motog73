@@ -1,5 +1,5 @@
-# Maintainer is filled in by whoever submits this package upstream.
-maintainer=""
+# abuild requires a maintainer with a valid email address
+maintainer="dmdhrumilmistry <56185972+dmdhrumilmistry@users.noreply.github.com>"
 # Reference: <https://postmarketos.org/devicepkg>
 pkgname=device-motorola-devonf
 pkgdesc="Motorola moto g73 5G"
@@ -10,8 +10,8 @@ license="Apache-2.0"
 arch="aarch64"
 options="!check !archcheck"
 depends="
+	android-tools
 	linux-motorola-devonf
-	mkbootimg
 	postmarketos-base
 "
 makedepends="devicepkg-dev"

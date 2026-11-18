@@ -7,13 +7,21 @@
 #
 # Usage:
 #   recovery/build-twrp.sh <stock-dir>
+#   recovery/build-twrp.sh -k <dist-dir>
 #
 #   <stock-dir> is the output of scripts/extract-stock-images.sh
 #   (it must contain images/vendor_boot.img and prebuilt/).
 #
+#   -k <dist-dir> is the CI mode, no stock firmware needed: <dist-dir> holds
+#   Image.gz and mt6855.dtb from our own source kernel build. The stock repack
+#   is skipped; OUT_DIR (default: out/recovery) receives
+#   twrp-devonf-recovery-ramdisk.cpio.lz4 and twrp-devonf-vendor_boot-raw.img.
+#   The raw image is NOT a flashable vendor_boot (no stock fragments).
+#
 # Environment:
 #   TWRP_DIR      TWRP source checkout (default: src/twrp)
 #   TWRP_BRANCH   minimal manifest branch (default: twrp-14.1)
+#   OUT_DIR       CI mode output directory (default: out/recovery)
 #   JOBS          parallel jobs (default: nproc)
 #
 # Needs ~60 GB of disk and the usual AOSP build dependencies.
@@ -26,10 +34,27 @@ TWRP_BRANCH="${TWRP_BRANCH:-twrp-14.1}"
 MANIFEST="https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git"
 JOBS="${JOBS:-$(nproc)}"
 
-[[ $# -eq 1 ]] || { sed -n '/^# Usage:/,/^# Needs/p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
-STOCK="$(realpath "$1")"
-[[ -f "$STOCK/images/vendor_boot.img" ]] || { echo "error: $STOCK/images/vendor_boot.img missing" >&2; exit 1; }
-[[ -f "$STOCK/prebuilt/kernel" ]] || { echo "error: $STOCK/prebuilt missing (run scripts/extract-stock-images.sh)" >&2; exit 1; }
+usage() { sed -n '/^# Usage:/,/^# Needs/p' "$0" | sed 's/^# \{0,1\}//'; }
+KDIST=""
+while getopts "k:h" opt; do
+    case "$opt" in
+        k) KDIST="$(realpath "$OPTARG")" ;;
+        h) usage; exit 0 ;;
+        *) usage; exit 1 ;;
+    esac
+done
+shift $((OPTIND - 1))
+STOCK=""
+if [[ -n "$KDIST" ]]; then
+    [[ $# -eq 0 ]] || { usage; exit 1; }
+    [[ -f "$KDIST/Image.gz" ]] || { echo "error: $KDIST/Image.gz missing" >&2; exit 1; }
+    [[ -f "$KDIST/mt6855.dtb" ]] || { echo "error: $KDIST/mt6855.dtb missing" >&2; exit 1; }
+else
+    [[ $# -eq 1 ]] || { usage; exit 1; }
+    STOCK="$(realpath "$1")"
+    [[ -f "$STOCK/images/vendor_boot.img" ]] || { echo "error: $STOCK/images/vendor_boot.img missing" >&2; exit 1; }
+    [[ -f "$STOCK/prebuilt/kernel" ]] || { echo "error: $STOCK/prebuilt missing (run scripts/extract-stock-images.sh)" >&2; exit 1; }
+fi
 command -v repo >/dev/null || { echo "error: 'repo' not found (https://source.android.com/docs/setup/download)" >&2; exit 1; }
 
 mkdir -p "$TWRP_DIR"
@@ -41,12 +66,18 @@ fi
 echo ">> Syncing sources"
 repo sync -c -j"$JOBS" --force-sync --no-clone-bundle --no-tags
 
-echo ">> Installing device tree and stock prebuilts"
+echo ">> Installing device tree and prebuilts"
 DEV="$TWRP_DIR/device/motorola/devonf"
 rm -rf "$DEV"
 mkdir -p "$DEV"
 cp -r "$ROOT/recovery/twrp/device/motorola/devonf/." "$DEV/"
-cp -r "$STOCK/prebuilt" "$DEV/prebuilt"
+if [[ -n "$KDIST" ]]; then
+    mkdir -p "$DEV/prebuilt/dtb"
+    cp "$KDIST/Image.gz" "$DEV/prebuilt/kernel"
+    cp "$KDIST/mt6855.dtb" "$DEV/prebuilt/dtb/mt6855.dtb"
+else
+    cp -r "$STOCK/prebuilt" "$DEV/prebuilt"
+fi
 
 echo ">> Building vendor_boot (recovery ramdisk)"
 set +u
@@ -54,19 +85,38 @@ set +u
 source build/envsetup.sh
 export ALLOW_MISSING_DEPENDENCIES=true
 lunched=0
-for target in twrp_devonf-eng twrp_devonf-ap2a-eng twrp_devonf-ap1a-eng twrp_devonf-trunk_staging-eng; do
-    if lunch "$target" >/dev/null 2>&1; then
+lunch_log="$(mktemp)"
+# twrp-14.1 (Android 14 QPR3) only ships the "ap2a" release config.
+for target in "twrp_devonf-${TWRP_RELEASE:-ap2a}-eng" twrp_devonf-eng; do
+    echo "   trying: lunch $target"
+    if lunch "$target" >"$lunch_log" 2>&1; then
         echo "   lunch $target"
         lunched=1
         break
     fi
+    sed 's/^/     | /' "$lunch_log" | tail -n 40 >&2
 done
-[[ "$lunched" == 1 ]] || { echo "error: lunch failed for twrp_devonf" >&2; exit 1; }
+rm -f "$lunch_log"
+[[ "$lunched" == 1 ]] || { echo "error: lunch failed for twrp_devonf (output above)" >&2; exit 1; }
+# The twrp_ramdisk step copies these from the system output, but TWRP only
+# lists them as dependencies when crypto is enabled (it is disabled here),
+# so build them first.
+m -j"$JOBS" task_profiles.json mke2fs.conf plat_keystore2_key_contexts
 m -j"$JOBS" vendorbootimage
 set -u
 
 BUILT="$OUT/vendor_boot.img"
 [[ -f "$BUILT" ]] || { echo "error: build did not produce $BUILT" >&2; exit 1; }
+
+if [[ -n "$KDIST" ]]; then
+    CI_OUT="${OUT_DIR:-$ROOT/out/recovery}"
+    mkdir -p "$CI_OUT"
+    "$ROOT/scripts/repack-vendor-boot.sh" -e "$CI_OUT/twrp-devonf-recovery-ramdisk.cpio.lz4" -r "$BUILT"
+    cp "$BUILT" "$CI_OUT/twrp-devonf-vendor_boot-raw.img"
+    echo
+    echo ">> TWRP built (CI mode), output in $CI_OUT"
+    exit 0
+fi
 
 RESULT="$ROOT/out/recovery/twrp-devonf-vendor_boot.img"
 mkdir -p "$(dirname "$RESULT")"

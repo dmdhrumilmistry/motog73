@@ -19,6 +19,14 @@ jobs:
           sudo apt-get update -q
           sudo apt-get install -y -q shellcheck libxml2-utils lz4 cpio
 
+      - name: Install actionlint
+        run: pip install --user actionlint-py==1.7.12.25
+
+      - name: actionlint (workflow files)
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          actionlint
+
       - name: shellcheck
         run: |
           find . -name '*.sh' -not -path './src/*' -print0 | xargs -0 shellcheck

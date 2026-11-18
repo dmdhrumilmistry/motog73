@@ -63,6 +63,13 @@ LineageOS uses them automatically. Some notes:
 - The upstream community tree references its maintainer's private key
   repository. This project **does not** include it.
 
+## Building with a self-hosted GitHub runner
+
+LineageOS is too big for GitHub's free runners, so the `rom.yml` workflow runs
+only on a self-hosted runner (labels `self-hosted,lineage`) that has at least
+32 GiB RAM plus swap, 300 GiB disk and 8 cores. The output is a workflow
+artifact, not a release. Setup steps are in [ci.md](ci.md).
+
 ## Updating
 
 ```sh
