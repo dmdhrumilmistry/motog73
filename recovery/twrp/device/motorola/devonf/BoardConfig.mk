@@ -76,7 +76,6 @@ BOARD_USES_GENERIC_KERNEL_IMAGE := true
 
 # Recovery lives in vendor_boot (there is no recovery partition)
 BOARD_USES_RECOVERY_AS_BOOT :=
-BOARD_EXCLUDE_KERNEL_FROM_RECOVERY_IMAGE := true
 BOARD_MOVE_RECOVERY_RESOURCES_TO_VENDOR_BOOT := true
 BOARD_INCLUDE_RECOVERY_RAMDISK_IN_VENDOR_BOOT := true
 TARGET_NO_RECOVERY := true
@@ -122,11 +121,12 @@ BOARD_AVB_RECOVERY_ALGORITHM := SHA256_RSA4096
 BOARD_AVB_RECOVERY_ROLLBACK_INDEX := 1
 BOARD_AVB_RECOVERY_ROLLBACK_INDEX_LOCATION := 1
 
-# Anti-rollback: keep these far in the future so TWRP is never refused
-PLATFORM_SECURITY_PATCH := 2099-12-31
-VENDOR_SECURITY_PATCH := 2099-12-31
+# Version shown to TWRP (used for decryption checks). Android 14 builds take
+# PLATFORM_SECURITY_PATCH and PLATFORM_VERSION_LAST_STABLE from release flags
+# and refuse them here. No anti-rollback override is needed: the recovery
+# ramdisk is injected into the stock vendor_boot, which keeps its header.
 PLATFORM_VERSION := 99.87.36
-PLATFORM_VERSION_LAST_STABLE := $(PLATFORM_VERSION)
+VENDOR_SECURITY_PATCH := 2099-12-31
 
 # Encryption (FBE v2 + metadata encryption, wrapped keys).
 # Decryption needs MediaTek/Trustonic keymint blobs that are proprietary and

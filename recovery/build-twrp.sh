@@ -85,14 +85,18 @@ set +u
 source build/envsetup.sh
 export ALLOW_MISSING_DEPENDENCIES=true
 lunched=0
-for target in twrp_devonf-eng twrp_devonf-ap2a-eng twrp_devonf-ap1a-eng twrp_devonf-trunk_staging-eng; do
-    if lunch "$target" >/dev/null 2>&1; then
+lunch_log="$(mktemp)"
+for target in twrp_devonf-eng twrp_devonf-ap2a-eng twrp_devonf-trunk_staging-eng; do
+    echo "   trying: lunch $target"
+    if lunch "$target" >"$lunch_log" 2>&1; then
         echo "   lunch $target"
         lunched=1
         break
     fi
+    sed 's/^/     | /' "$lunch_log" | tail -n 40 >&2
 done
-[[ "$lunched" == 1 ]] || { echo "error: lunch failed for twrp_devonf" >&2; exit 1; }
+rm -f "$lunch_log"
+[[ "$lunched" == 1 ]] || { echo "error: lunch failed for twrp_devonf (output above)" >&2; exit 1; }
 m -j"$JOBS" vendorbootimage
 set -u
 
