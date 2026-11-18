@@ -1,0 +1,35 @@
+# TWRP fstab for the moto g73 5G (devonf)
+# <mount point>  <type>  <device>                     <flags>
+
+# Logical partitions inside super (A/B, erofs)
+/system_root     erofs   system                       flags=display="System";logical;slotselect;backup=0
+/system_ext      erofs   system_ext                   flags=display="System_ext";logical;slotselect;backup=0
+/vendor          erofs   vendor                       flags=display="Vendor";logical;slotselect;backup=0
+/vendor_dlkm     erofs   vendor_dlkm                  flags=display="Vendor_dlkm";logical;slotselect;backup=0
+/product         erofs   product                      flags=display="Product";logical;slotselect;backup=0
+
+# Writable partitions
+/metadata        ext4    /dev/block/by-name/metadata  flags=display="Metadata";backup=1
+/data            f2fs    /dev/block/by-name/userdata  flags=fileencryption=aes-256-xts:aes-256-cts:v2+inlinecrypt_optimized+wrappedkey_v0;metadata_encryption=aes-256-xts:wrappedkey_v0;keydirectory=/metadata/vold/metadata_encryption
+
+# Raw images (backup / flash)
+/boot            emmc    /dev/block/by-name/boot          flags=display="Boot";backup=1;flashimg=1;slotselect
+/vendor_boot     emmc    /dev/block/by-name/vendor_boot   flags=display="Vendor Boot (recovery)";backup=1;flashimg=1;slotselect
+/dtbo            emmc    /dev/block/by-name/dtbo          flags=display="DTBO";backup=1;flashimg=1;slotselect
+/vbmeta          emmc    /dev/block/by-name/vbmeta        flags=display="VBMeta";backup=1;flashimg=1;slotselect
+/vbmeta_system   emmc    /dev/block/by-name/vbmeta_system flags=display="VBMeta System";backup=1;flashimg=1;slotselect
+/logo            emmc    /dev/block/by-name/logo          flags=display="Boot logo";backup=1;flashimg=1
+
+# Modem / calibration data. Back these up once and keep the backup private:
+# they contain device-unique data (IMEI, calibration) that cannot be recovered.
+/nvram           emmc    /dev/block/by-name/nvram         flags=display="NVRAM";backup=1
+/nvdata          ext4    /dev/block/by-name/nvdata        flags=display="NVDATA";backup=1
+/nvcfg           ext4    /dev/block/by-name/nvcfg         flags=display="NVCFG";backup=1
+/protect_f       ext4    /dev/block/by-name/protect1      flags=display="Protect_f";backup=1
+/protect_s       ext4    /dev/block/by-name/protect2      flags=display="Protect_s";backup=1
+/persist         ext4    /dev/block/by-name/persist       flags=display="Persist";backup=1
+/proinfo         emmc    /dev/block/by-name/proinfo       flags=display="Proinfo";backup=1
+
+# Removable storage
+# (internal storage is UFS = /dev/block/sd*, so the microSD slot is mmcblk0)
+/external_sd     auto    /dev/block/mmcblk0p1 /dev/block/mmcblk0  flags=display="microSD";storage;wipeingui;removable

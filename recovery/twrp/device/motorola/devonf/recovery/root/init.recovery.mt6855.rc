@@ -1,0 +1,12 @@
+# Recovery init for the moto g73 5G (devonf)
+
+on init
+    # USB gadget (MediaTek musb controller)
+    setprop sys.usb.configfs 1
+    setprop sys.usb.controller "musb-hdrc"
+    setprop sys.usb.ffs.aio_compat 0
+
+on fs
+    # Expose by-name links for TWRP tools that expect /dev/block/bootdevice
+    symlink /dev/block/platform/soc/112b0000.ufshci /dev/block/bootdevice
+    install_keyring

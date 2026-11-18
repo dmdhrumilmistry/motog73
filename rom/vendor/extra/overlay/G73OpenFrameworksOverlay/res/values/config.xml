@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-License-Identifier: Apache-2.0
+-->
+<resources>
+    <!-- Use the vendor-neutral NTP pool instead of a single company's servers. -->
+    <string-array name="config_ntpServers" translatable="false">
+        <item>ntp://pool.ntp.org</item>
+    </string-array>
+</resources>
