@@ -37,11 +37,11 @@ Details:
 GitHub runners have little free space on `/`, so the big jobs use `/mnt`
 (the larger temporary disk) for work directories and swap files:
 
-| Job | Work dir | Swap on `/mnt` |
+| Job | Work dir | Swap |
 | :--- | :--- | :--- |
-| kernel | `/mnt` | 20 GB |
-| TWRP | `/mnt` | 12 GB |
-| postmarketOS | `/mnt` | 8 GB |
+| kernel | `/mnt` | 20 GB on `/mnt` |
+| TWRP | `/mnt` | 24 GB on `/` (Soong needs more than 16 GB RAM; `/mnt` is full of sources) |
+| postmarketOS | `/mnt` | 8 GB on `/mnt` |
 
 ## Cutting a release
 

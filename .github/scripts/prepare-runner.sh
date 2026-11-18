@@ -4,20 +4,23 @@
 #
 # Prepare a GitHub-hosted Ubuntu runner for a large build.
 #
-# Usage: prepare-runner.sh [--free-disk] [--swap GB] [--workdir DIR]
+# Usage: prepare-runner.sh [--free-disk] [--swap GB] [--swap-file PATH] [--workdir DIR]
 #
-#   --free-disk    remove preinstalled toolchains this project does not need
-#   --swap GB      replace swap with a GB-gigabyte swap file on /mnt
-#   --workdir DIR  create DIR on the big disk, owned by the current user
+#   --free-disk        remove preinstalled toolchains this project does not need
+#   --swap GB          replace swap with a GB-gigabyte swap file
+#   --swap-file PATH   where to put the swap file (default /mnt/swapfile); use a
+#                      path on / when /mnt is needed for sources
+#   --workdir DIR      create DIR on the big disk, owned by the current user
 #
 set -euo pipefail
 
 FREE_DISK=0
 SWAP_GB=""
+SWAP_FILE="/mnt/swapfile"
 WORKDIR=""
 
 usage() {
-    echo "Usage: $(basename "$0") [--free-disk] [--swap GB] [--workdir DIR]"
+    echo "Usage: $(basename "$0") [--free-disk] [--swap GB] [--swap-file PATH] [--workdir DIR]"
 }
 
 while [ $# -gt 0 ]; do
@@ -26,6 +29,9 @@ while [ $# -gt 0 ]; do
         --swap)
             [ $# -ge 2 ] || { usage >&2; exit 2; }
             SWAP_GB="$2"; shift ;;
+        --swap-file)
+            [ $# -ge 2 ] || { usage >&2; exit 2; }
+            SWAP_FILE="$2"; shift ;;
         --workdir)
             [ $# -ge 2 ] || { usage >&2; exit 2; }
             WORKDIR="$2"; shift ;;
@@ -43,11 +49,11 @@ fi
 
 if [ -n "$SWAP_GB" ]; then
     sudo swapoff -a
-    sudo rm -f /mnt/swapfile
-    sudo fallocate -l "${SWAP_GB}G" /mnt/swapfile
-    sudo chmod 600 /mnt/swapfile
-    sudo mkswap /mnt/swapfile
-    sudo swapon /mnt/swapfile
+    sudo rm -f /mnt/swapfile "$SWAP_FILE"
+    sudo fallocate -l "${SWAP_GB}G" "$SWAP_FILE"
+    sudo chmod 600 "$SWAP_FILE"
+    sudo mkswap "$SWAP_FILE"
+    sudo swapon "$SWAP_FILE"
 fi
 
 if [ -n "$WORKDIR" ]; then
