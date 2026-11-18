@@ -1,0 +1,71 @@
+name: postmarketOS build
+
+on:
+  workflow_dispatch:
+    inputs:
+      ui:
+        description: postmarketOS user interface (e.g. console, phosh)
+        default: console
+        type: string
+      pmbootstrap_ref:
+        description: pmbootstrap git tag or branch
+        default: 3.12.1
+        type: string
+  workflow_call:
+    inputs:
+      ui:
+        description: postmarketOS user interface (e.g. console, phosh)
+        default: console
+        type: string
+      pmbootstrap_ref:
+        description: pmbootstrap git tag or branch
+        default: 3.12.1
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 345
+    env:
+      UI: ${{ inputs.ui || 'console' }}
+      PMBOOTSTRAP_REF: ${{ inputs.pmbootstrap_ref || '3.12.1' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare runner
+        run: .github/scripts/prepare-runner.sh --free-disk --swap 8 --workdir /mnt/pmb
+
+      - name: Install pmbootstrap dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q git openssl python3 xz-utils kpartx util-linux procps tar
+
+      - name: Install pmbootstrap
+        run: |
+          sudo git clone --depth 1 -b "$PMBOOTSTRAP_REF" \
+            https://gitlab.postmarketos.org/postmarketOS/pmbootstrap.git /opt/pmb
+          sudo ln -s /opt/pmb/pmbootstrap.py /usr/local/bin/pmbootstrap
+          pmbootstrap --version
+
+      - name: Git identity
+        run: |
+          git config --global user.name "ci"
+          git config --global user.email "ci@localhost"
+
+      - name: Build postmarketOS image
+        run: PMB_WORK=/mnt/pmb/work linux/postmarketos/ci-build.sh "$UI" upload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: devonf-pmos
+          path: upload/*
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: devonf-pmos-meta
+          path: pmos-meta/
+          if-no-files-found: error

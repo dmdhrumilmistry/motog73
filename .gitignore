@@ -39,3 +39,8 @@ src/
 *.swp
 *~
 .DS_Store
+
+# CI output folders
+upload/
+pmos-meta/
+dist-upload/
