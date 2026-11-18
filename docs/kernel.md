@@ -43,7 +43,11 @@ and adds `-Wno-error=<warning>` for those six. It only changes compiler
 flags, not the KMI.
 
 **Memory:** the stock config uses full LTO. Linking `vmlinux` needs about
-16 GB of RAM. On smaller machines add swap, or run the final link with `-j1`.
+16 GB of RAM. On smaller machines pass `-L` to use ThinLTO
+([`configs/thinlto.config`](../kernel/configs/thinlto.config)), which links
+in parallel with much less memory. LTO mode does not change the module ABI,
+and CFI stays on. The GitHub Actions builds use `-L`, because a free runner
+has only 16 GB.
 
 ## Full source tree (with out-of-tree modules)
 

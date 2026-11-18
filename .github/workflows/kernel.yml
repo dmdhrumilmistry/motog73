@@ -64,8 +64,10 @@ jobs:
             *)            extra= ;;
           esac
           # shellcheck disable=SC2086
-          kernel/build-kernel.sh -t "$TAG" -c src/clang-r416183b $extra -j4 \
-            || kernel/build-kernel.sh -t "$TAG" -c src/clang-r416183b $extra -j1
+          # -L: ThinLTO. Full LTO needs ~16 GB for the vmlinux link, which is
+          # all the runner has; the runner then dies without logs.
+          kernel/build-kernel.sh -t "$TAG" -c src/clang-r416183b -L $extra -j4 \
+            || kernel/build-kernel.sh -t "$TAG" -c src/clang-r416183b -L $extra -j1
 
       - name: Package artifacts
         id: package

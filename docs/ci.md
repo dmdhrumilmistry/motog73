@@ -19,7 +19,9 @@ yet.
 Details:
 
 - **kernel**: Motorola kernel built with AOSP clang r416183b on ubuntu-24.04.
-  If the LTO link runs out of memory it is retried with `-j1`.
+  It uses ThinLTO (`build-kernel.sh -L`): GKI's full-LTO `vmlinux` link
+  needs about 16 GB, all a free runner has, and the runner then dies without
+  leaving logs. If the build still runs out of memory it is retried with `-j1`.
 - **twrp**: TWRP `twrp-14.1` minimal manifest, built against the CI kernel and
   the DTB built from source. No stock files are used. The raw `vendor_boot`
   image in the artifact lacks the stock vendor ramdisk and must never be
