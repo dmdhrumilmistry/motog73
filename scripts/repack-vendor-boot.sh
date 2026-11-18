@@ -13,31 +13,40 @@
 #
 # Usage:
 #   repack-vendor-boot.sh -s stock_vendor_boot.img -r <recovery> -o out.img
+#   repack-vendor-boot.sh -e OUT -r vendor_boot.img
 #
 #   <recovery> can be:
 #     * a recovery ramdisk (.cpio, .cpio.lz4, .cpio.gz), or
 #     * a vendor_boot.img produced by a TWRP build (its recovery fragment is used)
+#
+#   -e OUT only extracts the RECOVERY fragment (type 2) of the vendor_boot
+#   given with -r into the file OUT (-s and -o are not needed in this mode).
 #
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TOOLS="${TOOLS:-$ROOT/src/tools}"
 
-STOCK="" RECOVERY="" OUTPUT=""
+STOCK="" RECOVERY="" OUTPUT="" EXTRACT=""
 usage() {
     sed -n '/^# Usage:/,/^set -euo/p' "$0" | sed '$d; s/^# \{0,1\}//'
 }
-while getopts "s:r:o:h" opt; do
+while getopts "s:r:o:e:h" opt; do
     case "$opt" in
         s) STOCK="$(realpath "$OPTARG")" ;;
         r) RECOVERY="$(realpath "$OPTARG")" ;;
         o) OUTPUT="$(realpath -m "$OPTARG")" ;;
+        e) EXTRACT="$(realpath -m "$OPTARG")" ;;
         h) usage; exit 0 ;;
         *) usage; exit 1 ;;
     esac
 done
-[[ -n "$STOCK" && -n "$RECOVERY" && -n "$OUTPUT" ]] || { usage; exit 1; }
-[[ -f "$STOCK" ]] || { echo "error: $STOCK not found" >&2; exit 1; }
+if [[ -n "$EXTRACT" ]]; then
+    [[ -n "$RECOVERY" ]] || { usage; exit 1; }
+else
+    [[ -n "$STOCK" && -n "$RECOVERY" && -n "$OUTPUT" ]] || { usage; exit 1; }
+    [[ -f "$STOCK" ]] || { echo "error: $STOCK not found" >&2; exit 1; }
+fi
 [[ -f "$RECOVERY" ]] || { echo "error: $RECOVERY not found" >&2; exit 1; }
 
 "$ROOT/scripts/fetch-tools.sh" --quiet
@@ -51,8 +60,6 @@ is_vendor_boot() {
     [[ "$(head -c 8 "$1" | tr -d '\0')" == "VNDRBOOT" ]]
 }
 
-is_vendor_boot "$STOCK" || { echo "error: $STOCK is not a vendor_boot image" >&2; exit 1; }
-
 # Read the mkbootimg argument list (NUL separated) of a vendor_boot image.
 read_args() {
     local img="$1" out="$2"
@@ -62,12 +69,11 @@ read_args() {
         < <("${UNPACK[@]}" --boot_img "$img" --out "$out" --format=mkbootimg -0)
 }
 
-# Resolve the recovery ramdisk to use.
-RECOVERY_RAMDISK="$WORK/recovery-ramdisk"
-if is_vendor_boot "$RECOVERY"; then
-    twrp_args=()
-    read_args "$RECOVERY" "$WORK/twrp" twrp_args
-    found=""
+# Extract the RECOVERY fragment (type 2) of vendor_boot image $1 to file $2.
+extract_recovery_fragment() {
+    local img="$1" dest="$2" found="" i j
+    local twrp_args=()
+    read_args "$img" "$WORK/twrp" twrp_args
     for ((i = 0; i < ${#twrp_args[@]}; i++)); do
         if [[ "${twrp_args[i]}" == "--ramdisk_type" && "${twrp_args[i+1]}" == "2" ]]; then
             for ((j = i; j < ${#twrp_args[@]}; j++)); do
@@ -79,11 +85,26 @@ if is_vendor_boot "$RECOVERY"; then
         fi
     done
     if [[ -z "$found" ]]; then
-        echo "error: $RECOVERY has no RECOVERY ramdisk fragment" >&2
+        echo "error: $img has no RECOVERY ramdisk fragment" >&2
         echo "       (was it built with BOARD_INCLUDE_RECOVERY_RAMDISK_IN_VENDOR_BOOT?)" >&2
         exit 1
     fi
-    cp "$found" "$RECOVERY_RAMDISK"
+    cp "$found" "$dest"
+}
+
+if [[ -n "$EXTRACT" ]]; then
+    is_vendor_boot "$RECOVERY" || { echo "error: $RECOVERY is not a vendor_boot image" >&2; exit 1; }
+    extract_recovery_fragment "$RECOVERY" "$EXTRACT"
+    echo ">> Wrote $EXTRACT ($(stat -c %s "$EXTRACT") bytes)"
+    exit 0
+fi
+
+is_vendor_boot "$STOCK" || { echo "error: $STOCK is not a vendor_boot image" >&2; exit 1; }
+
+# Resolve the recovery ramdisk to use.
+RECOVERY_RAMDISK="$WORK/recovery-ramdisk"
+if is_vendor_boot "$RECOVERY"; then
+    extract_recovery_fragment "$RECOVERY" "$RECOVERY_RAMDISK"
 else
     cp "$RECOVERY" "$RECOVERY_RAMDISK"
 fi
