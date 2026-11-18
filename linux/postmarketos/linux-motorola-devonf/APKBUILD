@@ -19,14 +19,14 @@ makedepends="
 	bash
 	bc
 	bison
-	clang
+	clang18
 	devicepkg-dev
 	elfutils-dev
 	findutils
 	flex
 	linux-headers
-	lld
-	llvm
+	lld18
+	llvm18
 	openssl-dev
 	perl
 	python3
@@ -39,9 +39,13 @@ _config="config-$_flavor.$arch"
 source="
 	$pkgname-$_tag.tar.gz::https://github.com/MotorolaMobilityLLC/kernel-mtk/archive/refs/tags/$_tag.tar.gz
 	$_config
+	0001-drm-mediatek-mtk_drm_crtc-do-not-pass-double-to-printk.patch
 "
 builddir="$srcdir/kernel-mtk-$_tag"
 
+# Pin clang 18: the tree targets AOSP clang 12 and was verified with clang 18.
+# Newer releases (Alpine edge ships 23) reject constructs in MediaTek drivers.
+export PATH="/usr/lib/llvm18/bin:$PATH"
 export LLVM=1
 export LLVM_IAS=1
 export CC="clang"
@@ -85,4 +89,5 @@ package() {
 sha512sums="
 RUN_PMBOOTSTRAP_CHECKSUM  linux-motorola-devonf-MMI-U1TNS34.82-12-7-26.tar.gz
 7d096dac69b5b351801672bf575d9d9557b4b993686314dd261b58bb1ca66246925533ce0ef37d070b98ec1020c43d57d998f628f6197a3ce2946d3eb9d01047  config-motorola-devonf.aarch64
+5a141ca5685562843f1bf8d695dc52843f887ed8001cfe5b91679c32a54ace9be1895716f89d1e90030a7eb4e9386b61fb738557073361cd01e28b259a76e16c  0001-drm-mediatek-mtk_drm_crtc-do-not-pass-double-to-printk.patch
 "

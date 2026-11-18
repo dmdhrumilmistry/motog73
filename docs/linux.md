@@ -123,8 +123,11 @@ fastboot -w
 
 - The kernel package uses pmaports' `downstreamkernel_prepare` (which strips
   `-Werror` from the kernel Makefiles, so newer clang warnings do not break
-  MediaTek drivers) and `downstreamkernel_package`. It is built with the
-  distro clang (`LLVM=1`).
+  MediaTek drivers) and `downstreamkernel_package`. It is built with
+  Alpine's `clang18` package (`LLVM=1`, `/usr/lib/llvm18/bin` on `PATH`):
+  clang 23 from Alpine edge rejects a `double` passed to `printk` in the
+  MediaTek display driver. The package also carries a one-line patch for
+  that spot, so newer clang releases get further.
 - `postmarketos.config` disables `CONFIG_WERROR`, LTO (`CONFIG_LTO_NONE`) and
   `CFI_CLANG`. That is acceptable because postmarketOS does not load the stock
   GKI vendor modules.

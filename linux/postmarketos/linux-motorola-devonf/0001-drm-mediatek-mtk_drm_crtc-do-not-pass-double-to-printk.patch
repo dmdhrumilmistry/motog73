@@ -1,0 +1,24 @@
+From: dmdhrumilmistry <56185972+dmdhrumilmistry@users.noreply.github.com>
+Subject: [PATCH] drm/mediatek: mtk_drm_crtc: do not pass a double to printk
+
+MSYNC_MIN_FPS is a floating point constant (46.1). Kernel code is built
+with -mgeneral-regs-only, and newer clang releases reject passing a
+double through varargs ("requires 'double' type support"). Print the
+constant as a string instead; behaviour is unchanged.
+
+---
+ drivers/gpu/drm/mediatek/mediatek_v2/mtk_drm_crtc.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+--- a/drivers/gpu/drm/mediatek/mediatek_v2/mtk_drm_crtc.c
++++ b/drivers/gpu/drm/mediatek/mediatek_v2/mtk_drm_crtc.c
+@@ -8014,7 +8014,8 @@
+ 		fps = drm_mode_vrefresh(mode);
+ 		time_diff = msync_dy->record[msync_dy->record_index].time -
+ 			msync_dy->record[last_msync_idx].time;
+-		DDPDBG("[Msync] min fps:%f, fps:%d, time_diff:%d\n", MSYNC_MIN_FPS, fps, time_diff);
++		DDPDBG("[Msync] min fps:" __stringify(MSYNC_MIN_FPS) ", fps:%d, time_diff:%d\n",
++			fps, time_diff);
+ 		if (1000 * 1000 * 1000 / MSYNC_MIN_FPS < time_diff) {
+ 			msync_dy->record[msync_dy->record_index].low_frame = true;
+ 			DDPDBG("[Msync] low_frame = true\n");
