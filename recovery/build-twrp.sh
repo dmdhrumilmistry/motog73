@@ -86,7 +86,8 @@ source build/envsetup.sh
 export ALLOW_MISSING_DEPENDENCIES=true
 lunched=0
 lunch_log="$(mktemp)"
-for target in twrp_devonf-eng twrp_devonf-ap2a-eng twrp_devonf-trunk_staging-eng; do
+# twrp-14.1 (Android 14 QPR3) only ships the "ap2a" release config.
+for target in "twrp_devonf-${TWRP_RELEASE:-ap2a}-eng" twrp_devonf-eng; do
     echo "   trying: lunch $target"
     if lunch "$target" >"$lunch_log" 2>&1; then
         echo "   lunch $target"
