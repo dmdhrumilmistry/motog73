@@ -12,7 +12,8 @@ yet.
 | `kernel.yml` | manual dispatch, reusable | about 2.5 to 3.5 h | Artifact `devonf-kernel`: `devonf-kernel-Image.gz`, `devonf-kernel-mt6855.dtb`, `devonf-kernel-modules.tar.xz`, `devonf-kernel-config`, `devonf-kernel.release` |
 | `twrp.yml` | manual dispatch, reusable | long (builds the kernel too) | Artifact `devonf-twrp`: `devonf-twrp-recovery-ramdisk.cpio.lz4`, `devonf-twrp-vendor_boot-raw-DO-NOT-FLASH.img` |
 | `postmarketos.yml` | manual dispatch, reusable | long | Artifact `devonf-pmos`: kernel and device apks, `devonf-pmos-<ui>-rootfs.img.xz`, `devonf-pmos-boot.img`, possibly `devonf-pmos-vendor_boot.img`. Artifact `devonf-pmos-meta`: APKBUILD with the real tarball checksum, for maintainers |
-| `release.yml` | tag push `v*`, manual dispatch with `release_tag`, pull requests (see below) | all of the above | Prerelease (tag), draft release (dispatch), or build only (PR) |
+| `build.yml` | pull requests (see below), manual dispatch | all of the above | Build only: workflow artifacts, never a release |
+| `release.yml` | tag push `v*`, manual dispatch with `release_tag` | all of the above | Prerelease (tag) or draft release (dispatch) with all assets |
 | `rom.yml` | manual dispatch | many hours | LineageOS artifact, self-hosted runner only, never released |
 
 Details:
@@ -49,15 +50,16 @@ git push origin v0.1.0
 
 This builds everything and creates a **prerelease** with all assets, a
 `SHA256SUMS` file and release notes. For a **draft** release without a tag,
-open Actions, pick "Build and release", click "Run workflow" and enter a
+open Actions, pick "Release", click "Run workflow" and enter a
 `release_tag`. Review the draft, then publish it by hand.
 
 ## What runs on pull requests
 
-`release.yml` also runs on pull requests that touch `.github/**`, `kernel/**`,
+`build.yml` runs on pull requests that touch `.github/**`, `kernel/**`,
 `recovery/**`, `linux/postmarketos/**` or `scripts/repack-vendor-boot.sh`.
 The kernel is always built. TWRP and postmarketOS are built only when their
-own paths change. Pull requests never publish anything.
+own paths change. It has no release step, so pull requests never publish
+anything. To build without releasing, run "Build" from the Actions tab.
 
 ## Minutes
 
@@ -67,7 +69,7 @@ roughly 8 to 10 runner-hours, so check your quota first.
 
 ## Self-hosted runner for LineageOS
 
-`rom.yml` takes a `labels` input (default `["self-hosted","lineage"]`). A
+`rom.yml` takes a `runner` input (default `["self-hosted","lineage"]`). A
 preflight step fails the run unless the machine has at least 32 GiB of RAM plus
 swap, 300 GiB of free disk and 8 cores. Outline:
 

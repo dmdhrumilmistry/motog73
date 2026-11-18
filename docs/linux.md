@@ -144,7 +144,7 @@ fastboot -w
 ## Upstreaming to pmaports
 
 - [ ] The port boots on real hardware first.
-- [ ] Set `maintainer=` in both APKBUILDs.
+- [ ] Check `maintainer=` in both APKBUILDs (abuild refuses to build without a valid name and email).
 - [ ] `pmbootstrap checksum device-motorola-devonf linux-motorola-devonf`
 - [ ] `pmbootstrap lint`
 - [ ] Lint `deviceinfo` with `dint`.
