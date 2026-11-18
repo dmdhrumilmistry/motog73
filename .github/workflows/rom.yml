@@ -1,0 +1,149 @@
+# LineageOS 24.0 build for the moto g73 5G (devonf), on a SELF-HOSTED runner.
+#
+# A full build needs ~300 GB of disk, 32 GB of RAM (+swap) and many hours, so
+# it cannot run on GitHub's free hosted runners; the preflight step fails
+# clearly there.
+#
+# This workflow is intentionally NOT wired into the release workflow. ROM
+# builds include community vendor blobs, so publishing them is a maintainer
+# decision. Artifacts are kept for 14 days only.
+#
+# Signing keys: generate them once, on the runner, with rom/gen-keys.sh.
+# This workflow never generates, prints or uploads keys.
+name: LineageOS build (self-hosted)
+
+on:
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: JSON array of runner labels
+        type: string
+        default: '["self-hosted","lineage"]'
+      variant:
+        description: Build variant
+        type: choice
+        options: [userdebug, user, eng]
+        default: userdebug
+      with_flavor:
+        description: Install the G73 Open flavor
+        type: boolean
+        default: true
+      lineage_dir:
+        description: Source checkout (empty = $HOME/lineage)
+        type: string
+        default: ''
+  workflow_call:
+    inputs:
+      runner:
+        description: JSON array of runner labels
+        type: string
+        default: '["self-hosted","lineage"]'
+      variant:
+        description: Build variant (user, userdebug or eng)
+        type: string
+        default: userdebug
+      with_flavor:
+        description: Install the G73 Open flavor
+        type: boolean
+        default: true
+      lineage_dir:
+        description: Source checkout (empty = $HOME/lineage)
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ${{ fromJSON(inputs.runner || '["self-hosted","lineage"]') }}
+    # Self-hosted runners allow long jobs; hosted runners cap at 6 hours.
+    timeout-minutes: 1440
+    env:
+      VARIANT: ${{ inputs.variant || 'userdebug' }}
+      WITH_FLAVOR_INPUT: ${{ inputs.with_flavor }}
+      LINEAGE_DIR_INPUT: ${{ inputs.lineage_dir }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve settings
+        run: |
+          case "$VARIANT" in
+            user|userdebug|eng) ;;
+            *) echo "::error::variant must be user, userdebug or eng (got '$VARIANT')"; exit 1 ;;
+          esac
+          LINEAGE_DIR="${LINEAGE_DIR_INPUT:-$HOME/lineage}"
+          if [ "$WITH_FLAVOR_INPUT" = "false" ]; then WITH_FLAVOR=0; else WITH_FLAVOR=1; fi
+          {
+            echo "LINEAGE_DIR=$LINEAGE_DIR"
+            echo "WITH_FLAVOR=$WITH_FLAVOR"
+          } >> "$GITHUB_ENV"
+
+      - name: Preflight (resources)
+        run: |
+          mkdir -p "$LINEAGE_DIR"
+          mem_kb=$(awk '/^(MemTotal|SwapTotal):/ {s+=$2} END {print s+0}' /proc/meminfo)
+          mem_gib=$((mem_kb / 1024 / 1024))
+          disk_gib=$(df -BG --output=avail "$LINEAGE_DIR" | tail -n1 | tr -dc '0-9')
+          cpus=$(nproc)
+          echo "RAM+swap: ${mem_gib} GiB, free disk: ${disk_gib} GiB, CPUs: ${cpus}"
+          fail=0
+          if [ "$mem_gib" -lt 32 ]; then
+            echo "::error::RAM+swap is ${mem_gib} GiB; at least 32 GiB is required. Hosted runners cannot build this ROM; use a self-hosted runner."
+            fail=1
+          fi
+          if [ "$disk_gib" -lt 300 ]; then
+            echo "::error::Free disk at $LINEAGE_DIR is ${disk_gib} GiB; at least 300 GiB is required."
+            fail=1
+          fi
+          if [ "$cpus" -lt 8 ]; then
+            echo "::error::Only ${cpus} CPUs; at least 8 are required."
+            fail=1
+          fi
+          exit "$fail"
+
+      - name: Check tools
+        run: |
+          missing=0
+          for tool in repo git git-lfs; do
+            if ! command -v "$tool" >/dev/null; then
+              echo "::error::'$tool' is not installed on the runner (see docs/build-rom.md)"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Check signing keys
+        run: |
+          if [ ! -f "$LINEAGE_DIR/vendor/lineage-priv/keys/keys.mk" ]; then
+            echo "::warning::No private signing keys found; public test keys will be used. The runner admin should run rom/gen-keys.sh once on the runner."
+          fi
+
+      - name: Sync and build
+        run: rom/build-rom.sh all
+
+      - name: Collect artifacts
+        run: |
+          out="$LINEAGE_DIR/out/target/product/devonf"
+          mkdir -p "$RUNNER_TEMP/upload"
+          rm -f "$RUNNER_TEMP"/upload/*
+          if ! ls "$out"/lineage-*.zip >/dev/null 2>&1; then
+            echo "::error::No lineage-*.zip found in $out"
+            exit 1
+          fi
+          cp "$out"/lineage-*.zip "$RUNNER_TEMP/upload/"
+          for img in boot.img vendor_boot.img dtbo.img; do
+            if [ -f "$out/$img" ]; then
+              cp "$out/$img" "$RUNNER_TEMP/upload/"
+            else
+              echo "::warning::$img not found in $out"
+            fi
+          done
+          ls -lh "$RUNNER_TEMP/upload"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: devonf-lineage
+          path: ${{ runner.temp }}/upload/
+          retention-days: 14
+          if-no-files-found: error
