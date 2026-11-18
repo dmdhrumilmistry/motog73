@@ -2,13 +2,21 @@ name: Kernel build
 
 on:
   workflow_dispatch:
-    inputs:
+    inputs: &inputs
       tag:
         description: Motorola kernel tag
+        type: string
         default: MMI-U1TNS34.82-12-7-26
       flavor:
         description: "Config fragment: none, g73open or postmarketos"
+        type: string
         default: g73open
+  workflow_call:
+    inputs: *inputs
+    outputs:
+      kernel_release:
+        description: Kernel release string of the built kernel
+        value: ${{ jobs.build.outputs.kernel_release }}
 
 permissions:
   contents: read
@@ -16,41 +24,63 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 300
+    timeout-minutes: 345
+    outputs:
+      kernel_release: ${{ steps.package.outputs.kernel_release }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Free disk space
-        run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
-          df -h /
+      - name: Prepare runner
+        run: .github/scripts/prepare-runner.sh --free-disk --swap 20 --workdir /mnt/build
 
       - name: Install build dependencies
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y -q bc bison flex libssl-dev libelf-dev cpio lz4 python3
+          sudo apt-get install -y -q bc bison flex libssl-dev libelf-dev cpio lz4 python3 xz-utils
+
+      - name: Cache AOSP clang r416183b
+        uses: actions/cache@v4
+        with:
+          path: src/clang-r416183b
+          key: clang-r416183b-${{ hashFiles('kernel/fetch-clang.sh') }}
 
       - name: Fetch AOSP clang r416183b
         run: kernel/fetch-clang.sh src/clang-r416183b
 
       - name: Build kernel
         env:
-          TAG: ${{ inputs.tag }}
-          FLAVOR: ${{ inputs.flavor }}
+          TAG: ${{ inputs.tag || 'MMI-U1TNS34.82-12-7-26' }}
+          FLAVOR: ${{ inputs.flavor || 'g73open' }}
+          SRC: /mnt/build/kernel-5.10
+          OUT: /mnt/build/out
         run: |
           case "$FLAVOR" in
             g73open)      extra=-g ;;
             postmarketos) extra=-p ;;
             *)            extra= ;;
           esac
-          kernel/build-kernel.sh -t "$TAG" -c src/clang-r416183b $extra
+          # shellcheck disable=SC2086
+          kernel/build-kernel.sh -t "$TAG" -c src/clang-r416183b $extra -j4 \
+            || kernel/build-kernel.sh -t "$TAG" -c src/clang-r416183b $extra -j1
+
+      - name: Package artifacts
+        id: package
+        env:
+          OUT: /mnt/build/out
+        run: |
+          mkdir dist-upload
+          tar -C "$OUT/dist/modules" -cJf dist-upload/devonf-kernel-modules.tar.xz lib
+          cp "$OUT/dist/Image.gz"        dist-upload/devonf-kernel-Image.gz
+          cp "$OUT/dist/mt6855.dtb"      dist-upload/devonf-kernel-mt6855.dtb
+          cp "$OUT/dist/config"          dist-upload/devonf-kernel-config
+          cp "$OUT/dist/kernel.release"  dist-upload/devonf-kernel.release
+          echo "kernel_release=$(tr -d '\n' < dist-upload/devonf-kernel.release)" >> "$GITHUB_OUTPUT"
+          ls -lh dist-upload
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: kernel-devonf-${{ inputs.tag }}-${{ inputs.flavor }}
-          path: |
-            out/kernel/dist/Image.gz
-            out/kernel/dist/mt6855.dtb
-            out/kernel/dist/config
-            out/kernel/dist/kernel.release
+          name: devonf-kernel
+          path: dist-upload/*
+          retention-days: ${{ github.event_name == 'pull_request' && 7 || 30 }}
+          if-no-files-found: error
