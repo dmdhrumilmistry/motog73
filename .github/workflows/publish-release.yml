@@ -1,0 +1,45 @@
+# Publishes a draft release created by release.yml (manual run with a
+# release_tag). Publishing makes GitHub create the tag at the commit the
+# draft was built from, so no tag has to be pushed by hand.
+name: Publish release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag of the draft release to publish (e.g. v0.1.0)
+        type: string
+        required: true
+      prerelease:
+        description: Keep it marked as a pre-release (untested on hardware)
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Publish the draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag }}
+          PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          set -euo pipefail
+          info="$(gh release view "$TAG" -R "$REPO" --json isDraft,targetCommitish,assets)"
+          echo "$info" | jq '{isDraft, targetCommitish, assets: [.assets[].name]}'
+          if [[ "$(jq -r .isDraft <<<"$info")" != "true" ]]; then
+            echo "::error::Release $TAG is not a draft (already published?)"
+            exit 1
+          fi
+          if [[ "$(jq '.assets | length' <<<"$info")" -eq 0 ]]; then
+            echo "::error::Release $TAG has no assets; refusing to publish it"
+            exit 1
+          fi
+          gh release edit "$TAG" -R "$REPO" --draft=false --prerelease="$PRERELEASE"
+          gh release view "$TAG" -R "$REPO" --json url,tagName,isDraft,isPrerelease \
+            --jq '"Published \(.tagName): \(.url) (prerelease: \(.isPrerelease))"'

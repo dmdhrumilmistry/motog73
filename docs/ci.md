@@ -14,6 +14,7 @@ yet.
 | `postmarketos.yml` | manual dispatch, reusable | long | Artifact `devonf-pmos`: kernel and device apks, `devonf-pmos-<ui>-rootfs.img.xz`, `devonf-pmos-boot.img`, possibly `devonf-pmos-vendor_boot.img`. Artifact `devonf-pmos-meta`: APKBUILD with the real tarball checksum, for maintainers |
 | `build.yml` | pull requests (see below), manual dispatch | all of the above | Build only: workflow artifacts, never a release |
 | `release.yml` | tag push `v*`, manual dispatch with `release_tag` | all of the above | Prerelease (tag) or draft release (dispatch) with all assets |
+| `publish-release.yml` | manual dispatch with `tag` | seconds | Publishes a draft from `release.yml`; GitHub creates the tag |
 | `rom.yml` | manual dispatch | many hours | LineageOS artifact, self-hosted runner only, never released |
 
 Details:
@@ -56,7 +57,9 @@ git push origin v0.1.0
 This builds everything and creates a **prerelease** with all assets, a
 `SHA256SUMS` file and release notes. For a **draft** release without a tag,
 open Actions, pick "Release", click "Run workflow" and enter a
-`release_tag`. Review the draft, then publish it by hand.
+`release_tag`. Review the draft, then publish it: either by hand on the
+Releases page, or with Actions → "Publish release" → Run workflow (enter the
+same tag). Publishing creates the tag at the commit the draft was built from.
 
 ## What runs on pull requests
 
